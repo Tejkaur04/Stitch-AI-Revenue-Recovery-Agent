@@ -1,0 +1,100 @@
+.gc-root {
+  position: relative;
+  width: 100%;
+}
+
+.gc-track {
+  position: relative;
+  height: 360px;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.gc-slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: translateX(48px) scale(0.97);
+  transition: opacity 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.gc-slide.active {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  pointer-events: auto;
+  z-index: 2;
+}
+
+.gc-slide.exiting {
+  opacity: 0;
+  transform: translateX(-48px) scale(0.97);
+  z-index: 1;
+}
+
+.gc-slide-inner {
+  max-width: 560px;
+  text-align: center;
+  padding: 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.gc-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.25rem;
+  filter: drop-shadow(0 0 12px rgba(255,255,255,0.3));
+}
+
+.gc-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.gc-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.25;
+}
+
+.gc-desc {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.6;
+}
+
+/* Dots */
+.gc-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.gc-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0;
+}
+
+.gc-dot.active {
+  width: 24px;
+  background: #fff;
+}

@@ -1,0 +1,14 @@
+.app-root {
+  min-height: 100vh;
+  position: relative;
+}
+
+/* All non-landing pages get padded top for the fixed nav */
+.app-main {
+  padding: 100px 2.5rem 4rem;
+  min-height: 100vh;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Landing page handles its own layout */

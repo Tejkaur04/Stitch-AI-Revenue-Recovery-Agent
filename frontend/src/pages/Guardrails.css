@@ -1,0 +1,97 @@
+/* Guardrails — Minimal, trustworthy, controlled. No theatrics. */
+.guardrails-page {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.guardrails-page h1 {
+  font-size: 2.75rem;
+}
+
+.policy-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.policy-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(255,255,255,0.015);
+}
+
+.card-header h3 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.policy-setting {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  gap: 2rem;
+  transition: background 0.2s;
+}
+
+.policy-setting:last-child { border-bottom: none; }
+.policy-setting:hover { background: rgba(255,255,255,0.02); }
+
+.policy-info { flex: 1; }
+
+.policy-info h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.policy-info p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.policy-control {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.toggle-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: opacity 0.2s;
+}
+
+.toggle-btn:hover { opacity: 0.8; }
+
+.value-display {
+  padding: 0.35rem 0.9rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: var(--font-display);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-color);
+}
