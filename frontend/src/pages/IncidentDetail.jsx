@@ -16,15 +16,10 @@ const STATE_ORDER = [
 
 const IncidentDetail = () => {
   const { id } = useParams();
-  const [incident, setIncident] = useState(null);
-  const [events, setEvents] = useState([]);
+  const [incident, setIncident] = useState(() => getIncident(id));
+  const [events, setEvents] = useState(() => getEvents(id));
 
   useEffect(() => {
-    // Initial fetch
-    setIncident(getIncident(id));
-    setEvents(getEvents(id));
-    
-    // Subscribe to changes
     const unsubscribe = subscribe((incidents, allEvents) => {
       setIncident(incidents.find(i => i.id === id));
       setEvents(allEvents.filter(e => e.incidentId === id).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)));

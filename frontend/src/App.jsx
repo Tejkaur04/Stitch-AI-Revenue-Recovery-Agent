@@ -20,20 +20,15 @@ const Customers = () => (
 function App() {
   return (
     <Routes>
-      {/* Landing page (uses AppLayout for nav only) */}
       <Route path="/" element={<AppLayout />}>
         <Route index element={<Landing />} />
-      </Route>
-
-      {/* App pages */}
-      <Route path="/" element={<AppLayout />}>
-        <Route path="dashboard"           element={<MissionControl />} />
-        <Route path="demo"                element={<DemoMode />} />
-        <Route path="incidents"           element={<IncidentsList />} />
-        <Route path="incidents/:id"       element={<IncidentDetail />} />
-        <Route path="lab"                 element={<RecoveryLab />} />
-        <Route path="customers"           element={<Customers />} />
-        <Route path="guardrails"          element={<Guardrails />} />
+        <Route path="dashboard" element={<MissionControl />} />
+        <Route path="demo" element={<DemoMode />} />
+        <Route path="incidents" element={<IncidentsList />} />
+        <Route path="incidents/:id" element={<IncidentDetail />} />
+        <Route path="lab" element={<RecoveryLab />} />
+        <Route path="customers" element={<Customers />} />
+        <Route path="guardrails" element={<Guardrails />} />
       </Route>
     </Routes>
   );

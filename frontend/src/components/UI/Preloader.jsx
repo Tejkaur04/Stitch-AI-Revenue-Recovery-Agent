@@ -10,8 +10,12 @@ const Preloader = ({ onDone }) => {
       setPhase('done');
       onDone?.();
     }, 2900);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, []);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [onDone]);
 
   if (phase === 'done') return null;
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './GradientCarousel.css';
 
 const GradientCarousel = ({ slides }) => {
@@ -6,20 +6,20 @@ const GradientCarousel = ({ slides }) => {
   const [prev, setPrev] = useState(null);
   const [animating, setAnimating] = useState(false);
 
-  const goto = (idx) => {
+  const goto = useCallback((idx) => {
     if (animating || idx === current) return;
     setPrev(current);
     setAnimating(true);
     setCurrent(idx);
     setTimeout(() => { setPrev(null); setAnimating(false); }, 600);
-  };
+  }, [animating, current]);
 
   useEffect(() => {
     const t = setInterval(() => {
       goto((current + 1) % slides.length);
     }, 4000);
     return () => clearInterval(t);
-  }, [current, slides.length, animating]);
+  }, [current, slides.length, goto]);
 
   return (
     <div className="gc-root">

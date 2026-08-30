@@ -73,8 +73,8 @@ const Landing = () => (
     <FallingRays intensity="high" />
 
     {/* Atmospheric Glows */}
-    <div className="lp-glow lp-glow-tl" />
-    <div className="lp-glow lp-glow-br" />
+    {/* <div className="lp-glow lp-glow-tl" />
+    <div className="lp-glow lp-glow-br" /> */}
 
     {/* ── HERO ─────────────────────────────────────────────────── */}
     <section className="lp-hero">
@@ -144,7 +144,7 @@ const Landing = () => (
     </section>
 
     {/* ── FEATURE CAROUSEL ─────────────────────────────────────── */}
-    <section className="lp-section">
+    <section id="features" className="lp-section">
       <div className="lp-section-header">
         <span className="lp-eyebrow">Core capabilities</span>
         <h2 className="lp-section-title">Built to understand, not just react.</h2>
@@ -153,7 +153,7 @@ const Landing = () => (
     </section>
 
     {/* ── RAZORPAY INTEGRATION ─────────────────────────────────── */}
-    <section className="lp-section">
+    <section id="integration" className="lp-section">
       <div className="lp-section-header">
         <span className="lp-eyebrow">Integration</span>
         <h2 className="lp-section-title">Razorpay-native by design.</h2>
@@ -194,7 +194,7 @@ const Landing = () => (
     </section>
 
     {/* ── GUARDRAILS ───────────────────────────────────────────── */}
-    <section className="lp-section lp-guardrails-section">
+    <section id="guardrails" className="lp-section lp-guardrails-section">
       <div className="lp-guardrails-content">
         <span className="lp-eyebrow">Safety</span>
         <h2 className="lp-section-title">The AI operates inside your rules.</h2>

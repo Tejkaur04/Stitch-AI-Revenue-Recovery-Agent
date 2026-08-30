@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { subscribe } from '../services/engine';
-import { useMode } from '../context/ModeContext';
-import { IndianRupee, Activity, ShieldCheck, Zap, Webhook } from 'lucide-react';
 import './MissionControl.css';
 
 const MetricCard = ({ title, value, subtext, highlight }) => (

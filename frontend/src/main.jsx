@@ -8,9 +8,10 @@ import './index.css';
 
 function Root() {
   const [ready, setReady] = useState(false);
+
   return (
     <>
-      <Preloader onDone={() => setReady(true)} />
+      {!ready && <Preloader onDone={() => setReady(true)} />}
       {ready && <App />}
     </>
   );

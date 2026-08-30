@@ -3,12 +3,21 @@
   position: relative;
 }
 
-/* All non-landing pages get padded top for the fixed nav */
 .app-main {
-  padding: 100px 2.5rem 4rem;
-  min-height: 100vh;
-  max-width: 1200px;
+  width: min(1200px, calc(100% - 32px));
   margin: 0 auto;
+  min-height: 100vh;
+}
+
+.page-shell {
+  padding: 100px 2rem 4rem;
+}
+
+.landing-shell {
+  width: 100%;
+  max-width: none;
+  min-height: 0;
+  padding: 0;
 }
 
 /* Landing page handles its own layout */

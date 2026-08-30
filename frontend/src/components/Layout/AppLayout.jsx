@@ -1,15 +1,20 @@
 import React from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import FloatingNav from './FloatingNav';
 import './AppLayout.css';
 
-const AppLayout = () => (
-  <div className="app-root">
-    <FloatingNav />
-    <div className="app-main">
-      <Outlet />
+const AppLayout = () => {
+  const location = useLocation();
+  const isLanding = location.pathname === '/';
+
+  return (
+    <div className="app-root">
+      <FloatingNav />
+      <div className={`app-main ${isLanding ? 'landing-shell' : 'page-shell'}`}>
+        <Outlet />
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default AppLayout;

@@ -40,6 +40,16 @@ const FloatingNav = () => {
             key={to}
             to={to}
             className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+            onClick={(event) => {
+              if (to.startsWith('/#')) {
+                const targetId = to.replace('/#', '');
+                const element = document.getElementById(targetId);
+                if (element) {
+                  event.preventDefault();
+                  element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+              }
+            }}
           >
             {label}
           </NavLink>

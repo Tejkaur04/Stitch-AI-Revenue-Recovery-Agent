@@ -5,11 +5,10 @@ import { Search, Filter } from 'lucide-react';
 import './IncidentsList.css';
 
 const IncidentsList = () => {
-  const [incidents, setIncidents] = useState([]);
+  const [incidents, setIncidents] = useState(() => getIncidents());
   const navigate = useNavigate();
 
   useEffect(() => {
-    setIncidents(getIncidents());
     const unsubscribe = subscribe((newIncidents) => {
       setIncidents([...newIncidents]);
     });
