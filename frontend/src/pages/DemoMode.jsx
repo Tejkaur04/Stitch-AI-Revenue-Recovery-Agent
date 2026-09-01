@@ -27,20 +27,18 @@ const scenarios = [
     desc: '₹12,000 at risk. AI recommends a 4th retry. The Policy engine blocks it. Stitch escalates instead.',
   },
   {
-    key: null,
+    key: 'EXPIRED_CARD',
     icon: Clock,
     iconClass: 'icon-muted',
     title: 'Expired Card',
-    desc: 'Stitch triggers a smart payment-method update link. (Coming soon)',
-    disabled: true,
+    desc: '₹4,999 at risk. Stitch identifies an expired card, sends an update link, and recovers after the payment method changes.',
   },
   {
-    key: null,
+    key: 'B2B_INVOICE',
     icon: Building2,
     iconClass: 'icon-muted',
     title: 'B2B Overdue Invoice',
-    desc: 'Customer typically pays late. Stitch waits, then escalates strategically. (Coming soon)',
-    disabled: true,
+    desc: '₹17,500 overdue. Stitch considers late-payment history and requests a promise-to-pay instead of escalating immediately.',
   },
 ];
 
@@ -49,8 +47,7 @@ const DemoMode = () => {
 
   const handleRun = async (scenarioKey) => {
     if (!scenarioKey) return;
-    const id = await runScenario(scenarioKey);
-    if (id) navigate(`/incidents/${id}`);
+    await runScenario(scenarioKey, id => navigate(`/incidents/${id}`));
   };
 
   return (

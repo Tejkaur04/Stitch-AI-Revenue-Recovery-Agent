@@ -9,14 +9,6 @@ const FloatingNav = () => {
   const location = useLocation();
   const isLanding = location.pathname === '/';
 
-  const dashLinks = [
-    { to: '/dashboard', label: 'Mission Control' },
-    { to: '/demo',      label: 'Demo Mode'       },
-    { to: '/incidents', label: 'Incidents'        },
-    { to: '/lab',       label: 'Recovery Lab'    },
-    { to: '/guardrails',label: 'Guardrails'      },
-  ];
-
   const landingLinks = [
     { to: '/#features',    label: 'Features'     },
     { to: '/#integration', label: 'Integration'  },
@@ -34,8 +26,8 @@ const FloatingNav = () => {
       </Link>
 
       {/* Links */}
-      <div className="nav-links">
-        {(isLanding ? landingLinks : dashLinks).map(({ to, label }) => (
+      {isLanding && <div className="nav-links">
+        {landingLinks.map(({ to, label }) => (
           <NavLink
             key={to}
             to={to}
@@ -54,7 +46,7 @@ const FloatingNav = () => {
             {label}
           </NavLink>
         ))}
-      </div>
+      </div>}
 
       {/* Right side actions */}
       <div className="nav-right">

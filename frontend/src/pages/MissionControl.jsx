@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { subscribe } from '../services/engine';
+import { getIncidents, subscribe, INCIDENT_STATES } from '../services/engine';
 import './MissionControl.css';
 
 const MetricCard = ({ title, value, subtext, highlight }) => (
@@ -15,9 +15,11 @@ const MetricCard = ({ title, value, subtext, highlight }) => (
 const MissionControl = () => {
   const [events, setEvents] = useState([]);
   const [latestRecovered, setLatestRecovered] = useState(null);
-  
+  const [summary, setSummary] = useState(() => getSummary(getIncidents()));
+
   useEffect(() => {
     const unsubscribe = subscribe((newIncidents, newEvents) => {
+      setSummary(getSummary(newIncidents));
       const recentEvents = [...newEvents].reverse();
       setEvents(recentEvents.slice(0, 5));
       
@@ -60,23 +62,23 @@ const MissionControl = () => {
             <span className="text-secondary">Revenue at Risk</span>
           </div>
           <div className="mc-balance-amount">
-            ₹12,70,000 <span className="mc-currency-indicator">INR</span>
+            ₹{(summary.atRisk / 100).toLocaleString('en-IN')} <span className="mc-currency-indicator">INR</span>
           </div>
           <div className="mc-balance-footer">
             <div className="mc-footer-stat">
               <span className="text-secondary">Recovered</span>
-              <span className={`font-semibold ${latestRecovered ? 'text-success animate-pulse-soft' : 'text-primary'}`}>₹5,43,000</span>
+              <span className={`font-semibold ${latestRecovered ? 'text-success animate-pulse-soft' : 'text-primary'}`}>₹{(summary.recovered / 100).toLocaleString('en-IN')}</span>
             </div>
             <div className="mc-footer-stat">
               <span className="text-secondary">Cases</span>
-              <span className="font-semibold text-primary">2,340</span>
+              <span className="font-semibold text-primary">{summary.cases.toLocaleString('en-IN')}</span>
             </div>
           </div>
         </div>
         
         <div className="mc-side-metrics">
-          <MetricCard title="Recovery Rate" value="42.7%" subtext="+12% vs Baseline" highlight={true} />
-          <MetricCard title="Customer Contacts" value="8.3K" subtext="-2.1K Annoyance Reduction" />
+          <MetricCard title="Recovery Rate" value={`${summary.rate.toFixed(1)}%`} subtext="Calculated from current incidents" highlight={true} />
+          <MetricCard title="Customer Contacts" value={summary.contacts.toLocaleString('en-IN')} subtext="Recorded engine actions" />
         </div>
       </div>
 
@@ -106,6 +108,25 @@ const MissionControl = () => {
       </div>
     </div>
   );
+};
+
+const getSummary = incidents => {
+  const atRisk = incidents
+    .filter(incident => incident.state !== INCIDENT_STATES.RECOVERED)
+    .reduce((total, incident) => total + incident.amount_paise, 0);
+  const recovered = incidents
+    .filter(incident => incident.state === INCIDENT_STATES.RECOVERED)
+    .reduce((total, incident) => total + incident.amount_paise, 0);
+  const resolved = incidents.filter(incident => [INCIDENT_STATES.RECOVERED, INCIDENT_STATES.STOPPED].includes(incident.state)).length;
+  const contacts = incidents.reduce((total, incident) => total + (incident.action?.type === 'reminder' || incident.action?.type === 'send_link' ? 1 : 0), 0);
+
+  return {
+    atRisk,
+    recovered,
+    cases: incidents.length,
+    contacts,
+    rate: incidents.length ? (resolved / incidents.length) * 100 : 0
+  };
 };
 
 export default MissionControl;

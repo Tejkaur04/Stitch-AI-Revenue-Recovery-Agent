@@ -30,9 +30,10 @@ const IncidentDetail = () => {
   if (!incident) return <div className="loading-state">Locating Case File...</div>;
 
   const currentIdx = STATE_ORDER.indexOf(incident.state);
-  const isTerminal = incident.state === INCIDENT_STATES.RECOVERED || 
-                     incident.state === INCIDENT_STATES.STOPPED || 
-                     incident.state === INCIDENT_STATES.ESCALATED;
+  const isTerminal = [INCIDENT_STATES.RECOVERED, INCIDENT_STATES.STOPPED, INCIDENT_STATES.ESCALATED]
+    .includes(incident.state);
+  const isStopped = incident.state === INCIDENT_STATES.STOPPED;
+  const isEscalated = incident.state === INCIDENT_STATES.ESCALATED;
 
   return (
     <div className="incident-detail">
@@ -68,9 +69,9 @@ const IncidentDetail = () => {
         <h2 className="section-title">Live Recovery Pipeline</h2>
         <div className="pipeline">
           {STATE_ORDER.map((state, idx) => {
-            const isCompleted = currentIdx >= idx || isTerminal;
+            const isCompleted = currentIdx >= idx;
             const isCurrent = incident.state === state;
-            const isFailedEnd = isTerminal && incident.state !== INCIDENT_STATES.RECOVERED && idx === STATE_ORDER.length - 1;
+            const isFailedEnd = (isStopped || isEscalated) && idx === STATE_ORDER.length - 1;
             
             return (
               <div key={state} className={`pipeline-node ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}`}>
@@ -115,6 +116,19 @@ const IncidentDetail = () => {
           )}
         </div>
       </div>
+
+      {isStopped && (
+        <div className="risk-banner glass-panel incident-outcome outcome-stopped">
+          <strong>Payment already received.</strong>
+          <span>Unnecessary retry prevented.</span>
+        </div>
+      )}
+      {isEscalated && (
+        <div className="risk-banner glass-panel incident-outcome outcome-escalated">
+          <strong>BLOCKED BY POLICY</strong>
+          <span>Recovery was escalated to a human.</span>
+        </div>
+      )}
 
       <div className="audit-log glass-panel">
         <h3 className="panel-title">Audit Trail</h3>

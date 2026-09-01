@@ -31,7 +31,9 @@ const GradientCarousel = ({ slides }) => {
             style={{ background: slide.gradient }}
           >
             <div className="gc-slide-inner">
-              <div className="gc-icon">{slide.icon}</div>
+              <div className="gc-icon" aria-hidden="true">
+                <slide.icon size={42} strokeWidth={1.6} />
+              </div>
               <div className="gc-label">{slide.label}</div>
               <h3 className="gc-title">{slide.title}</h3>
               <p className="gc-desc">{slide.desc}</p>

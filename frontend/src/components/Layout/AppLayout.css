@@ -3,6 +3,13 @@
   position: relative;
 }
 
+.app-root > .aurora-container {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
 .app-main {
   width: min(1200px, calc(100% - 32px));
   margin: 0 auto;

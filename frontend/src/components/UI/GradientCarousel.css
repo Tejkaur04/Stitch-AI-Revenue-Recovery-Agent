@@ -48,8 +48,11 @@
 }
 
 .gc-icon {
-  font-size: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 0.25rem;
+  color: #fff;
   filter: drop-shadow(0 0 12px rgba(255,255,255,0.3));
 }
 
@@ -97,4 +100,8 @@
 .gc-dot.active {
   width: 24px;
   background: #fff;
+}
+
+.h3 {
+  color: var(--accent-magenta);
 }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Play, TrendingUp, TrendingDown } from 'lucide-react';
+import { calculateLabResults } from '../services/engine';
 import './RecoveryLab.css';
 
 const RecoveryLab = () => {
@@ -9,13 +10,9 @@ const RecoveryLab = () => {
   const runExperiment = () => {
     setIsRunning(true);
     setResults(null);
-    setTimeout(() => {
-      setResults({
-        baseline: { recovered: 1820000, rate: 45.2, contacts: 1450 },
-        stitch:   { recovered: 2360000, rate: 58.4, contacts: 420  },
-      });
-      setIsRunning(false);
-    }, 2500);
+    const nextResults = calculateLabResults();
+    setResults(nextResults);
+    setIsRunning(false);
   };
 
   const incremental = results
@@ -35,11 +32,11 @@ const RecoveryLab = () => {
         <div className="batch-info">
           <div className="batch-stat">
             <span className="label">Test Batch</span>
-            <span className="value">5,000 cases</span>
+            <span className="value">{results?.cases ?? 8} cases</span>
           </div>
           <div className="batch-stat">
             <span className="label">Revenue at Risk</span>
-            <span className="value">₹40.2L</span>
+            <span className="value">₹{((results?.revenueAtRisk ?? 7950000) / 100).toLocaleString('en-IN')}</span>
           </div>
         </div>
         <button
@@ -71,7 +68,7 @@ const RecoveryLab = () => {
               </div>
               <div className="result-metric">
                 <span className="label">Recovery Rate</span>
-                <span className="value">{results.baseline.rate}%</span>
+                <span className="value">{(results.baseline.rate * 100).toFixed(1)}%</span>
               </div>
               <div className="result-metric">
                 <span className="label">Customer Messages</span>
@@ -92,7 +89,7 @@ const RecoveryLab = () => {
               </div>
               <div className="result-metric">
                 <span className="label">Recovery Rate</span>
-                <span className="value text-success">{results.stitch.rate}%</span>
+                <span className="value text-success">{(results.stitch.rate * 100).toFixed(1)}%</span>
               </div>
               <div className="result-metric">
                 <span className="label">Customer Messages</span>
@@ -107,6 +104,10 @@ const RecoveryLab = () => {
             <div className="inc-content">
               <span className="inc-label">Incremental Revenue</span>
               <span className="inc-value text-success">+₹{incremental.toLocaleString('en-IN')}</span>
+            </div>
+            <div className="inc-content">
+              <span className="inc-label">Policy Violations</span>
+              <span className="inc-value">{results.policyViolations}</span>
             </div>
             <div className="inc-content">
               <span className="inc-label">Messages Avoided</span>

@@ -87,6 +87,30 @@
   padding: 2rem;
 }
 
+.incident-outcome {
+  justify-content: flex-start;
+  gap: 1rem;
+  border-radius: var(--radius-md);
+}
+
+.outcome-stopped {
+  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.outcome-stopped strong {
+  color: var(--status-success);
+}
+
+.outcome-escalated {
+  border-color: rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.outcome-escalated strong {
+  color: var(--status-warning);
+}
+
 .risk-amount {
   display: flex;
   flex-direction: column;

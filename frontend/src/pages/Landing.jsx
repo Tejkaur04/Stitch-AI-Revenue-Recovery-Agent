@@ -1,9 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import FallingRays from '../components/UI/FallingRays';
 import GradientCarousel from '../components/UI/GradientCarousel';
 import {
-  Zap, Shield, BrainCircuit, Eye, CircleDollarSign, Play,
+  Zap, Shield, BrainCircuit, Eye, CircleDollarSign, Play, Target,
   ArrowRight, CheckCircle2, Webhook, Cpu, ShieldCheck, Activity
 } from 'lucide-react';
 import './Landing.css';
@@ -12,35 +11,35 @@ import './Landing.css';
 const features = [
   {
     gradient: 'linear-gradient(135deg, rgba(168,85,247,0.25) 0%, rgba(59,130,246,0.15) 100%)',
-    icon: '⚡',
+    icon: Zap,
     label: 'Detection',
     title: 'Instant Failure Detection',
     desc: 'Every payment.failed webhook from Razorpay is ingested, deduplicated, and converted into a structured Incident within milliseconds.',
   },
   {
     gradient: 'linear-gradient(135deg, rgba(59,130,246,0.25) 0%, rgba(16,185,129,0.15) 100%)',
-    icon: '🧠',
+    icon: BrainCircuit,
     label: 'Understanding',
     title: 'AI Context Analysis',
     desc: 'Stitch reads customer LTV, payment history, failure type, retry count, and communication history to understand the true risk of every incident.',
   },
   {
     gradient: 'linear-gradient(135deg, rgba(16,185,129,0.25) 0%, rgba(59,130,246,0.15) 100%)',
-    icon: '🎯',
+    icon: Target,
     label: 'Decision',
     title: 'Next-Best Action',
     desc: 'AI selects the optimal recovery action — silent retry, payment-method update link, reminder, wait, or escalate — calibrated to the specific context.',
   },
   {
     gradient: 'linear-gradient(135deg, rgba(245,158,11,0.2) 0%, rgba(168,85,247,0.15) 100%)',
-    icon: '🛡️',
+    icon: Shield,
     label: 'Guardrails',
     title: 'Policy-Bounded Execution',
     desc: 'Before acting, Stitch checks every merchant-defined guardrail. Max retries, DND hours, contact limits, high-value approval thresholds — all enforced automatically.',
   },
   {
     gradient: 'linear-gradient(135deg, rgba(239,68,68,0.15) 0%, rgba(59,130,246,0.2) 100%)',
-    icon: '✅',
+    icon: CheckCircle2,
     label: 'Verification',
     title: 'State Verification Before Action',
     desc: 'Stitch re-checks the live Razorpay payment status before executing any action — preventing duplicate contact when a customer has already paid.',
@@ -69,8 +68,6 @@ const integrationSteps = [
 /* ── Component ──────────────────────────────────────────────────── */
 const Landing = () => (
   <div className="landing">
-    {/* Falling Rays — landing gets full intensity */}
-    <FallingRays intensity="high" />
 
     {/* Atmospheric Glows */}
     {/* <div className="lp-glow lp-glow-tl" />
@@ -78,6 +75,8 @@ const Landing = () => (
 
     {/* ── HERO ─────────────────────────────────────────────────── */}
     <section className="lp-hero">
+      <br></br>
+      <br></br>
       <div className="lp-tag animate-slide-up">
         <span className="tag-dot" /> AI Revenue Orchestrator · Built for Razorpay
       </div>
