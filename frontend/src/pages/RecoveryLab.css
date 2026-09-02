@@ -74,6 +74,30 @@
   box-shadow: 0 0 20px var(--accent-magenta);
 }
 
+.experiment-explanation {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1.25rem 1.5rem;
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
+.experiment-explanation strong {
+  color: var(--accent-blue);
+}
+
+.experiment-explanation p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.experiment-explanation code {
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  white-space: normal;
+}
+
 .results-container {
   display: grid;
   grid-template-columns: 1fr 1fr;

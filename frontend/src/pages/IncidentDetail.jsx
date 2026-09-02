@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { subscribe, getIncident, getEvents, INCIDENT_STATES } from '../services/engine';
+import { razorpayApi } from '../services/api';
+import { useMode } from '../context/ModeContext';
 import { ArrowLeft, User, AlertCircle, CheckCircle, Clock, ShieldX, BrainCircuit } from 'lucide-react';
 import './IncidentDetail.css';
 
@@ -11,21 +13,38 @@ const STATE_ORDER = [
   INCIDENT_STATES.POLICY_CHECK,
   INCIDENT_STATES.VERIFYING,
   INCIDENT_STATES.EXECUTING,
-  INCIDENT_STATES.RECOVERED
-]; // Simplified for linear view, STOPPED/ESCALATED branch off
+  INCIDENT_STATES.RECOVERED,
+  INCIDENT_STATES.STOPPED,
+  INCIDENT_STATES.ESCALATED
+];
 
 const IncidentDetail = () => {
   const { id } = useParams();
+  const { mode } = useMode();
   const [incident, setIncident] = useState(() => getIncident(id));
   const [events, setEvents] = useState(() => getEvents(id));
 
   useEffect(() => {
+    if (mode === 'razorpay') {
+      let active = true;
+      const load = async () => {
+        try {
+          const result = await razorpayApi.getIncident(id);
+          if (!active) return;
+          setIncident(result.incident);
+          setEvents(result.events || []);
+        } catch { if (active) setIncident(undefined); }
+      };
+      load();
+      const interval = setInterval(load, 2000);
+      return () => { active = false; clearInterval(interval); };
+    }
     const unsubscribe = subscribe((incidents, allEvents) => {
       setIncident(incidents.find(i => i.id === id));
       setEvents(allEvents.filter(e => e.incidentId === id).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)));
     });
     return unsubscribe;
-  }, [id]);
+  }, [id, mode]);
 
   if (!incident) return <div className="loading-state">Locating Case File...</div>;
 
@@ -34,6 +53,22 @@ const IncidentDetail = () => {
     .includes(incident.state);
   const isStopped = incident.state === INCIDENT_STATES.STOPPED;
   const isEscalated = incident.state === INCIDENT_STATES.ESCALATED;
+  const isRecovered = incident.state === INCIDENT_STATES.RECOVERED;
+  const terminalStateOrder = isStopped ? [
+    INCIDENT_STATES.DETECTED,
+    INCIDENT_STATES.UNDERSTANDING,
+    INCIDENT_STATES.DECIDING,
+    INCIDENT_STATES.POLICY_CHECK,
+    INCIDENT_STATES.VERIFYING,
+    INCIDENT_STATES.EXECUTING,
+    INCIDENT_STATES.STOPPED
+  ] : isEscalated ? [
+    INCIDENT_STATES.DETECTED,
+    INCIDENT_STATES.UNDERSTANDING,
+    INCIDENT_STATES.DECIDING,
+    INCIDENT_STATES.POLICY_CHECK,
+    INCIDENT_STATES.ESCALATED
+  ] : STATE_ORDER;
 
   return (
     <div className="incident-detail">
@@ -68,17 +103,20 @@ const IncidentDetail = () => {
       <div className="pipeline-container">
         <h2 className="section-title">Live Recovery Pipeline</h2>
         <div className="pipeline">
-          {STATE_ORDER.map((state, idx) => {
-            const isCompleted = currentIdx >= idx;
+          {terminalStateOrder.map((state, idx) => {
+            const linearComplete = currentIdx >= idx && !isStopped && !isEscalated;
+            const isCompleted = isRecovered ? idx <= STATE_ORDER.indexOf(INCIDENT_STATES.RECOVERED) : linearComplete;
             const isCurrent = incident.state === state;
-            const isFailedEnd = (isStopped || isEscalated) && idx === STATE_ORDER.length - 1;
-            
+            const isStoppedNode = isStopped && state === INCIDENT_STATES.STOPPED;
+            const isEscalatedNode = isEscalated && state === INCIDENT_STATES.ESCALATED;
+            const isFailedEnd = (isStoppedNode || isEscalatedNode) && state === incident.state;
+
             return (
-              <div key={state} className={`pipeline-node ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}`}>
+              <div key={state} className={`pipeline-node ${isCompleted || isFailedEnd ? 'completed' : ''} ${isCurrent ? 'current' : ''}`}>
                 <div className="node-icon">
-                  {isCompleted && !isCurrent ? <CheckCircle size={16} /> : 
-                   isCurrent ? <Clock size={16} className={!isTerminal ? 'pulse-icon' : ''} /> : 
-                   isFailedEnd ? <ShieldX size={16} /> :
+                  {isFailedEnd ? <ShieldX size={16} /> :
+                   isCurrent ? <Clock size={16} className={!isTerminal ? 'pulse-icon' : ''} /> :
+                   isCompleted ? <CheckCircle size={16} /> :
                    <div className="empty-circle"></div>}
                 </div>
                 <div className="node-label">{state}</div>

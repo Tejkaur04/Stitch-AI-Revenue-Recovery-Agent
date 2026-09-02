@@ -16,7 +16,7 @@ const RecoveryLab = () => {
   };
 
   const incremental = results
-    ? (results.stitch.recovered - results.baseline.recovered) / 100
+    ? results.incrementalLift / 100
     : 0;
 
   return (
@@ -57,6 +57,17 @@ const RecoveryLab = () => {
 
       {results && (
         <>
+          <div className="experiment-explanation glass-panel animate-slide-up">
+            <strong>Why this measures Stitch impact</strong>
+            <p>
+              Both strategies receive the same revenue-at-risk batch. The control group follows the existing strategy;
+              the treatment group follows Stitch. A higher treatment recovery rate is the measurable lift attributable
+              to the different recovery strategy, while contacts and policy violations show the cost of that lift.
+            </p>
+            <code>
+              Incremental lift = Treatment at-risk revenue × (Treatment recovery rate − Control recovery rate)
+            </code>
+          </div>
           <div className="results-container animate-slide-up">
             {/* Baseline */}
             <div className="strategy-card glass-panel">
@@ -102,7 +113,7 @@ const RecoveryLab = () => {
 
           <div className="incremental-banner glass-panel animate-slide-up">
             <div className="inc-content">
-              <span className="inc-label">Incremental Revenue</span>
+              <span className="inc-label">Net Incremental Lift</span>
               <span className="inc-value text-success">+₹{incremental.toLocaleString('en-IN')}</span>
             </div>
             <div className="inc-content">

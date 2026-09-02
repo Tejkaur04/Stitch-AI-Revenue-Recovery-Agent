@@ -67,6 +67,86 @@
   backdrop-filter: blur(8px);
 }
 
+.mc-razorpay-control {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 0.8rem 1rem;
+  text-align: left;
+}
+
+.mc-razorpay-control > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.mc-connection-state {
+  color: var(--status-warning);
+  font-size: 0.75rem;
+}
+
+.mc-connection-state.connected {
+  color: var(--status-success);
+}
+
+.mc-razorpay-control small {
+  color: var(--text-secondary);
+  max-width: 220px;
+}
+
+.mc-stitch-trace {
+  width: min(100%, 760px);
+  margin-top: 1rem;
+  padding: 1rem 1.25rem;
+  text-align: left;
+}
+
+.mc-trace-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mc-trace-heading strong {
+  color: var(--status-success);
+}
+
+.mc-trace-steps {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.9rem;
+  overflow-x: auto;
+  padding-bottom: 0.35rem;
+}
+
+.mc-trace-steps span {
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  white-space: nowrap;
+}
+
+.mc-trace-steps span.complete {
+  border-color: rgba(16, 185, 129, 0.35);
+  color: var(--status-success);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.mc-stitch-trace p {
+  margin-top: 0.75rem;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
 .mc-ai-orb {
   width: 12px;
   height: 12px;
@@ -204,10 +284,13 @@
   background: rgba(255,255,255,0.01);
   border: 1px solid transparent;
   transition: all 0.3s ease;
+  color: inherit;
+  text-decoration: none;
 }
 
 .mc-feed-item:hover {
   background: rgba(255,255,255,0.03);
+  border-color: var(--border-highlight);
 }
 
 .mc-feed-item.is-recovered {
@@ -248,4 +331,112 @@
 .mc-feed-text {
   font-size: 0.95rem;
   line-height: 1.4;
+}
+
+.mc-operation-panel {
+  width: 100%;
+  max-width: 1000px;
+  margin-top: 2rem;
+  padding: 1.5rem;
+}
+
+.mc-operation-header,
+.mc-decision-summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.25rem;
+}
+
+.mc-operation-header h3 {
+  margin-top: 0.35rem;
+  font-size: 1.25rem;
+}
+
+.mc-operation-kicker {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.mc-operation-state {
+  color: var(--accent-magenta);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.mc-operation-steps {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+  margin: 1.5rem 0;
+}
+
+.mc-operation-step {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+}
+
+.mc-operation-step span {
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+}
+
+.mc-operation-step.complete {
+  color: var(--status-success);
+}
+
+.mc-operation-step.complete span {
+  border-color: var(--status-success);
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.mc-operation-step.current span {
+  color: var(--text-primary);
+  border-color: var(--accent-magenta);
+  background: var(--accent-magenta);
+  box-shadow: 0 0 14px rgba(168, 85, 247, 0.45);
+}
+
+.mc-decision-summary {
+  border-top: 1px solid var(--border-color);
+  padding-top: 1rem;
+}
+
+.mc-decision-summary > div {
+  flex: 1;
+}
+
+.mc-decision-summary strong {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--accent-magenta);
+}
+
+.mc-decision-summary p {
+  margin-top: 0.35rem;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 700px) {
+  .mc-operation-steps {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .mc-decision-summary {
+    flex-direction: column;
+  }
 }

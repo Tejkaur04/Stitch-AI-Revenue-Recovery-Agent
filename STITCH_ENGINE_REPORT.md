@@ -2,7 +2,7 @@
 
 **Project:** Stitch AI Revenue Recovery Agent  
 **Report date:** 2026-09-01  
-**Current implementation:** Frontend in-memory simulation engine
+**Current implementation:** Frontend in-memory simulation engine plus a separate Razorpay Test Mode backend slice
 
 ## 1. Executive Summary
 
@@ -27,8 +27,12 @@ The implementation lives in:
 - `frontend/src/pages/IncidentDetail.jsx` - incident state, decision, policy, and audit visualization
 - `frontend/src/pages/RecoveryLab.jsx` - baseline versus Stitch experiment results
 - `frontend/src/pages/MissionControl.jsx` - metrics derived from engine incidents
+- `backend/src/server.js` - HTTP API, webhook verification, and contract routes
+- `backend/src/razorpayAdapter.js` - server-side Razorpay Test Mode API client
+- `backend/src/stitchEngine.js` - normalized webhook handling and server-side decision boundary
+- `backend/src/store.js` - backend incident, audit, and idempotency store
 
-State is held in module-level memory. Refreshing the browser clears incidents and events.
+Frontend state is held in module-level memory. Backend state is currently held in process memory as well; restarting either process clears its local state.
 
 ## 3. Internal Domain Model
 
@@ -328,19 +332,36 @@ Demo Adapter or Razorpay Adapter
               UI
 ```
 
-The current repository implements the shared in-memory simulation portion. It does not yet contain:
+The repository now implements the shared in-memory simulation portion and a Razorpay Test Mode backend boundary. It does not yet contain:
 
-- A backend service
 - A database or durable event store
-- A real `RazorpayAdapter`
-- Webhook signature verification
-- Webhook idempotency using Razorpay event IDs
-- Invoice and open-order polling
-- Real action execution against Razorpay Test Mode
+- Durable database or Redis storage
+- Real provider-side retry execution against Razorpay Test Mode
 - Persistent guardrail configuration
 - A machine-learning inference service
 
-## 10. Safety Properties Already Present
+## 10. Backend Integration Slice
+
+The separate `backend/` folder provides:
+
+- `POST /webhooks/razorpay` with raw-body HMAC-SHA256 verification
+- Duplicate event protection using `x-razorpay-event-id`
+- Event normalization into the internal incident format
+- Shared state-machine transition validation
+- Pre-execution `getPaymentStatus()` verification through Razorpay
+- Merchant policy checks for quiet hours, contact caps, retry caps, opt-out, and high-value approval
+- Bounded action execution for wait, retry scheduling, reminders, and payment links
+- Paid/captured webhook updates that resolve matching incidents
+- Optional invoice poller for overdue invoice discovery
+- Control/treatment impact calculations for recovered money, contacts, recovery cost, incremental lift, and policy violations
+- Frontend synchronization with Razorpay incidents and backend audit events
+- `GET /dashboard/summary`, incident list/detail, and trace endpoints
+- `GET /razorpay/status`, `GET /events`, and `POST /recovery/impact`
+- `POST /demo/simulate-manual-payment` for the race-condition demonstration
+
+Configure `backend/.env` from `backend/.env.example` and use only `rzp_test_` credentials during development.
+
+## 11. Safety Properties Already Present
 
 - Legal state transitions are enforced
 - Policy-blocked actions escalate instead of executing
@@ -350,22 +371,19 @@ The current repository implements the shared in-memory simulation portion. It do
 - Money is represented internally in paise
 - Mission Control metrics are derived from current engine incidents
 
-## 11. Known Gaps And Next Implementation Steps
+## 12. Known Gaps And Next Implementation Steps
 
 Recommended order for future development:
 
-1. Add unit tests for valid and invalid state transitions.
-2. Extract `MockRazorpayAdapter` behind the current scenario behavior.
-3. Add a backend with durable incident and audit storage.
-4. Implement the Razorpay adapter using Test Mode credentials only.
-5. Verify webhook signatures from the raw request body.
-6. Deduplicate webhook events by Razorpay event ID.
-7. Add current payment-status verification before consequential actions.
-8. Persist merchant guardrails and connect them to policy evaluation.
-9. Complete the B2B promise-to-pay outcome flow.
-10. Replace scenario decision rules with a versioned inference service only after observable signals and policy decisions are fully logged.
+1. Add unit tests for valid and invalid state transitions and webhook signatures.
+2. Replace in-memory state with PostgreSQL and Redis-backed idempotency/queues.
+3. Implement provider-specific retry execution only where the Razorpay resource supports it.
+4. Persist merchant guardrails and approval decisions.
+5. Complete the B2B promise-to-pay outcome flow and abandoned-order poller.
+6. Add attribution holdout logic for trustworthy incremental lift measurement.
+7. Replace scenario decision rules with a versioned inference service only after observable signals and policy decisions are fully logged.
 
-## 12. Important Interpretation
+## 13. Important Interpretation
 
 The current Stitch engine should be described as an **explainable deterministic AI decision simulation**, not as a trained AI model. This is intentional: it makes the demo behavior reproducible and keeps policy authority separate from AI recommendations.
 

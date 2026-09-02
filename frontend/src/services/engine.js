@@ -87,11 +87,16 @@ export const calculateLabResults = () => {
 
   const baseline = summarize('baseline');
   const stitch = summarize('stitch');
+  const baselineRate = baseline.recovered / LAB_CASES.reduce((total, item) => total + item.amount, 0);
+  const stitchRate = stitch.recovered / LAB_CASES.reduce((total, item) => total + item.amount, 0);
+  const treatmentAtRisk = LAB_CASES.filter(item => item.stitchRecovered !== undefined)
+    .reduce((total, item) => total + item.amount, 0);
   return {
     cases: LAB_CASES.length,
     revenueAtRisk: LAB_CASES.reduce((total, item) => total + item.amount, 0),
-    baseline: { ...baseline, rate: baseline.recoveredCases / LAB_CASES.length },
-    stitch: { ...stitch, rate: stitch.recoveredCases / LAB_CASES.length },
+    baseline: { ...baseline, rate: baselineRate },
+    stitch: { ...stitch, rate: stitchRate },
+    incrementalLift: treatmentAtRisk * (stitchRate - baselineRate),
     policyViolations: 1
   };
 };
@@ -283,6 +288,10 @@ export const runScenario = async (scenarioType, onIncidentCreated = null) => {
     await delay(800);
     transitionState(id, INCIDENT_STATES.EXECUTING, EVENT_ACTORS.SYSTEM, 'Promise-to-pay request sent', {
       action: { type: 'reminder', status: 'executed' }
+    });
+    await delay(1200);
+    transitionState(id, INCIDENT_STATES.STOPPED, EVENT_ACTORS.SYSTEM, 'Waiting on customer promise-to-pay', {
+      outcome: 'No payment yet; follow-up is scheduled after the customer response window.'
     });
     return id;
   }

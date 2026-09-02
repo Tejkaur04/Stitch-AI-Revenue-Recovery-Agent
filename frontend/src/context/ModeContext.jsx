@@ -5,9 +5,19 @@ const ModeContext = createContext();
 export const useMode = () => useContext(ModeContext);
 
 export const ModeProvider = ({ children }) => {
-  const [mode, setMode] = useState('simulation'); // 'simulation' | 'razorpay'
+  const [mode, setMode] = useState(() => {
+    const savedMode = window.localStorage.getItem('stitch-mode');
+    return savedMode === 'razorpay' ? 'razorpay' : 'simulation';
+  });
+
+  const changeMode = nextMode => {
+    const normalizedMode = nextMode === 'razorpay' ? 'razorpay' : 'simulation';
+    window.localStorage.setItem('stitch-mode', normalizedMode);
+    setMode(normalizedMode);
+  };
+
   return (
-    <ModeContext.Provider value={{ mode, setMode }}>
+    <ModeContext.Provider value={{ mode, setMode: changeMode }}>
       {children}
     </ModeContext.Provider>
   );

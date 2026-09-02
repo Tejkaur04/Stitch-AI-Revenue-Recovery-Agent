@@ -31,7 +31,7 @@ const Guardrails = () => (
     <header>
       <h1>Guardrails</h1>
       <p className="text-secondary" style={{ marginTop: '0.5rem' }}>
-        AI has power. You control the rules.
+        Recovery is only allowed when the rules still allow it.
       </p>
     </header>
 
@@ -90,7 +90,7 @@ const Guardrails = () => (
       <div className="policy-card glass-panel">
         <div className="card-header">
           <Lock size={18} className="text-danger" />
-          <h3>AI Boundaries</h3>
+          <h3>Execution Boundaries</h3>
         </div>
         <div className="settings-list">
           <PolicySetting
@@ -99,8 +99,8 @@ const Guardrails = () => (
             value={true}
           />
           <PolicySetting
-            title="AI Override"
-            description="Allow Stitch to override policy guardrails in extreme edge cases."
+            title="Override Policy"
+            description="Keep automatic override settings disabled unless a merchant explicitly turns them on."
             value={false}
           />
         </div>

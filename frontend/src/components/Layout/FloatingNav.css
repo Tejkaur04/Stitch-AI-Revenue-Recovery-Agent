@@ -160,6 +160,11 @@
   border-radius: 50%;
 }
 
+.mode-dot.connected {
+  box-shadow: 0 0 8px var(--status-success);
+  background: var(--status-success);
+}
+
 .mode-dot.sim { background: #10B981; }
 .mode-dot.rzp { background: #3B82F6; }
 

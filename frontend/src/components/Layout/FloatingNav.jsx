@@ -1,18 +1,47 @@
-import React from 'react';
-import { NavLink, Link, useLocation } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useMode } from '../../context/ModeContext';
-import { FlaskConical } from 'lucide-react';
+import { FlaskConical, LayoutDashboard } from 'lucide-react';
+import { razorpayApi } from '../../services/api';
 import './FloatingNav.css';
 
 const FloatingNav = () => {
   const { mode, setMode } = useMode();
   const location = useLocation();
+  const navigate = useNavigate();
+  const [apiStatus, setApiStatus] = useState(null);
   const isLanding = location.pathname === '/';
 
+  useEffect(() => {
+    let active = true;
+    const checkStatus = async () => {
+      try {
+        const status = await razorpayApi.getStatus();
+        if (active) setApiStatus(status);
+      } catch {
+        if (active) setApiStatus({ configured: false, webhookConfigured: false });
+      }
+    };
+    checkStatus();
+    const interval = setInterval(checkStatus, 10000);
+    return () => { active = false; clearInterval(interval); };
+  }, []);
+
+  const handleModeChange = nextMode => {
+    setMode(nextMode);
+    navigate(nextMode === 'simulation' ? '/console' : '/app');
+  };
+
   const landingLinks = [
-    { to: '/#features',    label: 'Features'     },
-    { to: '/#integration', label: 'Integration'  },
-    { to: '/#guardrails',  label: 'Guardrails'   },
+    { to: '/#features', label: 'Features' },
+    { to: '/#integration', label: 'Integration' },
+    { to: '/#guardrails', label: 'Guardrails' },
+  ];
+
+  const workspaceLinks = [
+    { to: '/app', label: 'Merchant App' },
+    { to: '/console', label: 'Console' },
+    { to: '/app/recovery-lab', label: 'Recovery Lab' },
   ];
 
   return (
@@ -26,8 +55,8 @@ const FloatingNav = () => {
       </Link>
 
       {/* Links */}
-      {isLanding && <div className="nav-links">
-        {landingLinks.map(({ to, label }) => (
+      <div className="nav-links">
+        {(isLanding ? landingLinks : workspaceLinks).map(({ to, label }) => (
           <NavLink
             key={to}
             to={to}
@@ -46,7 +75,7 @@ const FloatingNav = () => {
             {label}
           </NavLink>
         ))}
-      </div>}
+      </div>
 
       {/* Right side actions */}
       <div className="nav-right">
@@ -54,24 +83,27 @@ const FloatingNav = () => {
         <div className="mode-toggle">
           <button
             className={`mode-btn ${mode === 'simulation' ? 'active' : ''}`}
-            onClick={() => setMode('simulation')}
+            type="button"
+            onClick={() => handleModeChange('simulation')}
           >
             <span className="mode-dot sim" />
             Simulation
           </button>
           <button
             className={`mode-btn ${mode === 'razorpay' ? 'active' : ''}`}
-            onClick={() => setMode('razorpay')}
-            title="Razorpay Test Mode — backend integration coming soon"
+            type="button"
+            onClick={() => handleModeChange('razorpay')}
+            title="Open the Razorpay Test Mode workspace"
           >
-            <span className="mode-dot rzp" />
+            <span className={`mode-dot rzp ${apiStatus?.configured ? 'connected' : ''}`} />
             Razorpay API
           </button>
         </div>
 
         {isLanding ? (
-          <Link to="/demo" className="btn btn-primary nav-cta">
-            <FlaskConical size={15} /> Try Demo
+          <Link to={mode === 'simulation' ? '/console' : '/app'} className="btn btn-primary nav-cta">
+            {mode === 'simulation' ? <FlaskConical size={15} /> : <LayoutDashboard size={15} />}
+            {mode === 'simulation' ? 'Open Console' : 'Open Merchant App'}
           </Link>
         ) : (
           <Link to="/" className="btn btn-secondary nav-cta-sm">

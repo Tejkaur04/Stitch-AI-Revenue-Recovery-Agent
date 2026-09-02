@@ -13,36 +13,36 @@ const features = [
     gradient: 'linear-gradient(135deg, rgba(168,85,247,0.25) 0%, rgba(59,130,246,0.15) 100%)',
     icon: Zap,
     label: 'Detection',
-    title: 'Instant Failure Detection',
-    desc: 'Every payment.failed webhook from Razorpay is ingested, deduplicated, and converted into a structured Incident within milliseconds.',
+    title: 'Immediate failure detection',
+    desc: 'Each Razorpay payment failure is normalized, deduplicated, and turned into a recoverable case with context attached.',
   },
   {
     gradient: 'linear-gradient(135deg, rgba(59,130,246,0.25) 0%, rgba(16,185,129,0.15) 100%)',
     icon: BrainCircuit,
-    label: 'Understanding',
-    title: 'AI Context Analysis',
-    desc: 'Stitch reads customer LTV, payment history, failure type, retry count, and communication history to understand the true risk of every incident.',
+    label: 'Context',
+    title: 'Customer and payment context',
+    desc: 'Stitch looks at account value, payment history, retry count, and recent customer interactions before it chooses a path.',
   },
   {
     gradient: 'linear-gradient(135deg, rgba(16,185,129,0.25) 0%, rgba(59,130,246,0.15) 100%)',
     icon: Target,
     label: 'Decision',
-    title: 'Next-Best Action',
-    desc: 'AI selects the optimal recovery action — silent retry, payment-method update link, reminder, wait, or escalate — calibrated to the specific context.',
+    title: 'Best next action',
+    desc: 'The engine chooses between a wait, retry, payment link, or escalation based on the case and the policy bounds.',
   },
   {
     gradient: 'linear-gradient(135deg, rgba(245,158,11,0.2) 0%, rgba(168,85,247,0.15) 100%)',
     icon: Shield,
     label: 'Guardrails',
-    title: 'Policy-Bounded Execution',
-    desc: 'Before acting, Stitch checks every merchant-defined guardrail. Max retries, DND hours, contact limits, high-value approval thresholds — all enforced automatically.',
+    title: 'Policy-bound execution',
+    desc: 'Recovery only runs when retry limits, quiet hours, opt-outs, and approval thresholds still allow it.',
   },
   {
     gradient: 'linear-gradient(135deg, rgba(239,68,68,0.15) 0%, rgba(59,130,246,0.2) 100%)',
     icon: CheckCircle2,
     label: 'Verification',
-    title: 'State Verification Before Action',
-    desc: 'Stitch re-checks the live Razorpay payment status before executing any action — preventing duplicate contact when a customer has already paid.',
+    title: 'Final payment-state check',
+    desc: 'The system confirms the payment state before acting so it never retries after the customer has already paid.',
   },
 ];
 
@@ -50,19 +50,19 @@ const features = [
 const pipeline = [
   { icon: Activity,        label: 'Detected',      desc: 'Webhook or poller identifies revenue at risk.' },
   { icon: Eye,             label: 'Understood',     desc: 'Customer context, history and risk are analysed.' },
-  { icon: BrainCircuit,    label: 'Decided',        desc: 'AI selects the highest-probability recovery action.' },
-  { icon: Shield,          label: 'Policy Checked', desc: 'Guardrails validate the action is permitted.' },
-  { icon: CheckCircle2,    label: 'Verified',       desc: 'Live payment state confirmed before execution.' },
+  { icon: BrainCircuit,    label: 'Decided',        desc: 'The engine selects the best recovery path for the specific case.' },
+  { icon: Shield,          label: 'Policy Checked', desc: 'Rules are validated before the action is allowed through.' },
+  { icon: CheckCircle2,    label: 'Verified',       desc: 'Live payment state is confirmed before execution.' },
   { icon: Zap,             label: 'Executed',       desc: 'Retry, link, reminder, or escalation is sent.' },
-  { icon: CircleDollarSign,label: 'Recovered',      desc: 'Revenue moves from At Risk → Recovered.' },
+  { icon: CircleDollarSign,label: 'Recovered',      desc: 'Revenue moves from at-risk to recovered.' },
 ];
 
 /* ── Razorpay Integration Steps ─────────────────────────────────── */
 const integrationSteps = [
-  { icon: Webhook,    title: 'Razorpay Webhooks',  desc: 'payment.failed events land at /webhooks/razorpay. Signature verified. Deduplicated by event ID.' },
-  { icon: Cpu,        title: 'Stitch Engine',       desc: 'Event is parsed, an Incident is created, customer context is loaded, and the AI decision loop starts.' },
-  { icon: ShieldCheck,title: 'Policy Guardrails',  desc: 'Every AI recommendation is validated against your configured merchant policies before any action is taken.' },
-  { icon: Activity,   title: 'Razorpay Actions',   desc: 'Stitch calls Razorpay APIs to retry charges, create payment links, or fetch latest subscription status.' },
+  { icon: Webhook,    title: 'Razorpay Webhooks',  desc: 'payment.failed events land at /webhooks/razorpay, are signature-checked, and deduplicated by event ID.' },
+  { icon: Cpu,        title: 'Recovery Engine',    desc: 'The event is normalized, the case is created, and the customer context is loaded before the decision step.' },
+  { icon: ShieldCheck,title: 'Policy Guardrails',  desc: 'Each action is checked against the configured rules before it is allowed through.' },
+  { icon: Activity,   title: 'Razorpay Actions',   desc: 'The engine triggers retries, payment links, or status checks only when the guardrails allow it.' },
 ];
 
 /* ── Component ──────────────────────────────────────────────────── */
@@ -78,16 +78,15 @@ const Landing = () => (
       <br></br>
       <br></br>
       <div className="lp-tag animate-slide-up">
-        <span className="tag-dot" /> AI Revenue Orchestrator · Built for Razorpay
+        <span className="tag-dot" /> Revenue Recovery Engine · Built for Razorpay
       </div>
       <h1 className="lp-headline animate-slide-up">
-        Recover More.<br />
-        <span className="text-accent-gradient">Annoy Less.</span><br />
-        Stay in Control.
+        Recover missed revenue.<br />
+        <span className="text-accent-gradient">Without adding noise.</span>
       </h1>
       <p className="lp-subhead animate-slide-up">
-        Stitch is an AI decision layer that detects revenue at risk, chooses the
-        right recovery action, verifies guardrails, and executes — in real time.
+        Stitch detects failed payments, ranks the best recovery path, checks the rules,
+        and only acts when the payment state is still unresolved.
       </p>
       <div className="lp-ctas animate-slide-up">
         <Link to="/demo" className="btn btn-primary lp-cta-primary">
@@ -103,8 +102,8 @@ const Landing = () => (
     <section className="lp-stats glass-panel animate-slide-up">
       {[
         { value: '₹12.7L+', label: 'Recovered this month' },
-        { value: '58.4%',   label: 'AI recovery rate' },
-        { value: '–71%',    label: 'Customer messages' },
+        { value: '58.4%',   label: 'Recovery rate' },
+        { value: '–71%',    label: 'Customer contacts' },
         { value: '<1s',     label: 'Detection latency' },
       ].map(s => (
         <div key={s.label} className="lp-stat">
@@ -157,9 +156,8 @@ const Landing = () => (
         <span className="lp-eyebrow">Integration</span>
         <h2 className="lp-section-title">Razorpay-native by design.</h2>
         <p className="lp-section-sub">
-          Stitch does not replace Razorpay's retry system — it adds an intelligent layer
-          on top of it. We intercept events, add context-aware decisions, and call
-          Razorpay APIs to execute approved actions.
+          Stitch sits on top of Razorpay's payments flow: it watches webhook events,
+          evaluates the case, checks the guardrails, and only then triggers the next recovery step.
         </p>
       </div>
 
@@ -196,13 +194,13 @@ const Landing = () => (
     <section id="guardrails" className="lp-section lp-guardrails-section">
       <div className="lp-guardrails-content">
         <span className="lp-eyebrow">Safety</span>
-        <h2 className="lp-section-title">The AI operates inside your rules.</h2>
+        <h2 className="lp-section-title">Recovery only happens within the rules.</h2>
         <p className="lp-section-sub">
           Every action is validated against merchant-defined guardrails before execution.
-          Stitch cannot override policy — and it never will.
+          If the case falls outside the allowed path, the system waits, stops, or escalates.
         </p>
         <div className="lp-guardrail-pills">
-          {['Max 3 Retries', 'DND 10PM–8AM', 'Dedup CRM Contacts', 'High-value Approval', 'Opt-out Respected', 'AI Override: OFF'].map(p => (
+          {['Max 3 Retries', 'DND 10PM–8AM', 'No Duplicate Outreach', 'High-value Approval', 'Opt-out Respect', 'Override Disabled'].map(p => (
             <div key={p} className="lp-guardrail-pill glass-panel">
               <CheckCircle2 size={14} className="text-success" /> {p}
             </div>
@@ -215,8 +213,8 @@ const Landing = () => (
       <div className="lp-guardrails-visual glass-panel">
         <div className="lgv-blocked">
           <span className="lgv-label text-danger">BLOCKED BY POLICY</span>
-          <p>AI recommended: Retry #4</p>
-          <p className="text-muted" style={{ fontSize: '0.85rem' }}>Maximum retries (3) exceeded.</p>
+          <p>Recommended action: retry #4</p>
+          <p className="text-muted" style={{ fontSize: '0.85rem' }}>Maximum retries reached; escalation required.</p>
         </div>
         <div className="lgv-arrow">↓</div>
         <div className="lgv-allowed">
@@ -238,7 +236,7 @@ const Landing = () => (
     </section>
 
     <footer className="lp-footer">
-      <span className="text-muted">Stitch · AI Revenue Recovery Orchestrator · Razorpay Hackathon 2026</span>
+      <span className="text-muted">Stitch · Revenue Recovery Engine · Razorpay-ready workflow</span>
     </footer>
   </div>
 );

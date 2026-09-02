@@ -1,19 +1,34 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getIncidents, subscribe } from '../services/engine';
+import { razorpayApi } from '../services/api';
+import { useMode } from '../context/ModeContext';
 import { Search, Filter } from 'lucide-react';
 import './IncidentsList.css';
 
 const IncidentsList = () => {
   const [incidents, setIncidents] = useState(() => getIncidents());
+  const { mode } = useMode();
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (mode === 'razorpay') {
+      let active = true;
+      const load = async () => {
+        try {
+          const result = await razorpayApi.getIncidents();
+          if (active) setIncidents(result.items || []);
+        } catch { if (active) setIncidents([]); }
+      };
+      load();
+      const interval = setInterval(load, 5000);
+      return () => { active = false; clearInterval(interval); };
+    }
     const unsubscribe = subscribe((newIncidents) => {
       setIncidents([...newIncidents]);
     });
     return unsubscribe;
-  }, []);
+  }, [mode]);
 
   return (
     <div className="incidents-list-page">
@@ -58,7 +73,7 @@ const IncidentsList = () => {
                 <tr key={incident.id} onClick={() => navigate(`/incidents/${incident.id}`)}>
                   <td>
                     <span className="incident-link">
-                      {incident.id.substring(4, 13).toUpperCase()}
+                      {String(incident.id || 'UNKNOWN').toUpperCase()}
                     </span>
                   </td>
                   <td style={{ fontWeight: 500 }}>{incident.customer.name}</td>
