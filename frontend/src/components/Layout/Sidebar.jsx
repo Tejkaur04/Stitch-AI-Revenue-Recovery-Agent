@@ -5,6 +5,7 @@ import {
   Shield, Play, ChevronRight, Wifi, WifiOff
 } from 'lucide-react';
 import { razorpayApi } from '../../services/api';
+import PipelineSignature from '../UI/PipelineSignature';
 import './Sidebar.css';
 
 const WORKSPACE = [
@@ -86,6 +87,8 @@ const Sidebar = () => {
         <div className="sidebar-nav-label">Tools</div>
         {TOOLS.map(renderLink)}
       </nav>
+
+      <div className="sidebar-pipeline"><span>Recovery pipeline</span><PipelineSignature compact activeStage={activeCount ? 2 : -1} /></div>
 
       <div className="sidebar-status">
         {apiOk === null ? (

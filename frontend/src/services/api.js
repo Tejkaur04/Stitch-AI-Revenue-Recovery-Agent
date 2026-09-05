@@ -58,6 +58,9 @@ export const razorpayApi = {
   simulateManualPayment: incidentId => request('/demo/simulate-manual-payment', {
     method: 'POST',
     body: JSON.stringify({ incident_id: incidentId })
+  }),
+  recordPromiseToPay: (incidentId, payload) => request(`/incidents/${encodeURIComponent(incidentId)}/promise-to-pay`, {
+    method: 'POST', body: JSON.stringify(payload)
   })
 };
 

@@ -20,6 +20,9 @@ db.exec(`
     key TEXT PRIMARY KEY,
     value TEXT
   );
+  CREATE TABLE IF NOT EXISTS customer_cohorts (customer_id TEXT PRIMARY KEY, cohort TEXT NOT NULL, assigned_at TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS recovery_jobs (id TEXT PRIMARY KEY, incident_id TEXT NOT NULL, run_at TEXT NOT NULL, type TEXT NOT NULL, status TEXT NOT NULL, data TEXT NOT NULL, created_at TEXT NOT NULL, completed_at TEXT);
+  CREATE INDEX IF NOT EXISTS recovery_jobs_due ON recovery_jobs(status, run_at);
 `);
 
 export const addIncident = incident => {
@@ -36,13 +39,14 @@ export const listIncidents = () => {
   return db.prepare('SELECT data FROM incidents').all().map(r => JSON.parse(r.data));
 };
 
-export const findIncidentByExternalId = ({ paymentId, orderId, invoiceId }) => listIncidents().find(incident =>
+export const findIncidentByExternalId = ({ paymentId, orderId, invoiceId, paymentLinkId }) => listIncidents().find(incident =>
   (paymentId && incident.payment_id === paymentId) ||
   (orderId && incident.order_id === orderId) ||
-  (invoiceId && incident.invoice_id === invoiceId)
+  (invoiceId && incident.invoice_id === invoiceId) ||
+  (paymentLinkId && incident.payment_link_id === paymentLinkId)
 );
 
-export const getIncidentEvents = id => db.prepare('SELECT data FROM audit_events WHERE incidentId = ? ORDER BY timestamp ASC').all().map(r => JSON.parse(r.data));
+export const getIncidentEvents = id => db.prepare('SELECT data FROM audit_events WHERE incidentId = ? ORDER BY timestamp ASC').all(id).map(r => JSON.parse(r.data));
 export const getAllAuditEvents = () => db.prepare('SELECT data FROM audit_events ORDER BY timestamp DESC').all().map(r => JSON.parse(r.data));
 
 export const updateIncident = (id, changes) => {
@@ -65,9 +69,31 @@ export const addAuditEvent = event => {
   return record;
 };
 
+export const getOrAssignCohort = customerId => {
+  const existing = db.prepare('SELECT cohort FROM customer_cohorts WHERE customer_id = ?').get(customerId);
+  if (existing) return existing.cohort;
+  let hash = 0;
+  for (const char of String(customerId)) hash = ((hash << 5) - hash + char.charCodeAt(0)) | 0;
+  const cohort = Math.abs(hash) % 5 === 0 ? 'control' : 'treatment';
+  db.prepare('INSERT INTO customer_cohorts (customer_id, cohort, assigned_at) VALUES (?, ?, ?)').run(customerId, cohort, new Date().toISOString());
+  return cohort;
+};
+
+export const enqueueRecoveryJob = ({ incidentId, type, runAt, data = {} }) => {
+  const job = { id: `job_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, incidentId, type, runAt, data, status: 'scheduled', createdAt: new Date().toISOString() };
+  db.prepare('INSERT INTO recovery_jobs (id, incident_id, run_at, type, status, data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(job.id, job.incidentId, job.runAt, job.type, job.status, JSON.stringify(job.data), job.createdAt);
+  return job;
+};
+
+export const claimDueRecoveryJobs = (now = new Date().toISOString()) => {
+  const due = db.prepare("SELECT * FROM recovery_jobs WHERE status = 'scheduled' AND run_at <= ? ORDER BY run_at LIMIT 50").all(now);
+  const mark = db.prepare("UPDATE recovery_jobs SET status = 'completed', completed_at = ? WHERE id = ? AND status = 'scheduled'");
+  return due.filter(job => mark.run(new Date().toISOString(), job.id).changes).map(job => ({ ...job, data: JSON.parse(job.data) }));
+};
+
 export const getMerchantSettings = () => {
   const rows = db.prepare('SELECT key, value FROM merchant_settings').all();
-  const defaults = { maxRetries: 3, maxContacts: 1, quietStartHour: 21, quietEndHour: 9, highValueThresholdPaise: 10000000, highValueRequiresApproval: true, quietHoursEnabled: true };
+  const defaults = { maxRetries: 3, maxContacts: 1, quietStartHour: 21, quietEndHour: 9, highValueThresholdPaise: 10000000, highValueRequiresApproval: true, quietHoursEnabled: true, attributionWindowDays: 14, requireConsentForOutreach: true };
   const saved = Object.fromEntries(rows.map(r => [r.key, JSON.parse(r.value)]));
   return { ...defaults, ...saved };
 };

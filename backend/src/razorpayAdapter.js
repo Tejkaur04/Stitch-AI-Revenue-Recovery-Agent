@@ -58,6 +58,10 @@ export class RazorpayAdapter {
     return this.request('/payment_links', { method: 'POST', body: JSON.stringify(payload) });
   }
 
+  getPaymentLink(paymentLinkId) {
+    return this.request(`/payment_links/${encodeURIComponent(paymentLinkId)}`);
+  }
+
   createOrder(payload) {
     return this.request('/orders', { method: 'POST', body: JSON.stringify(payload) });
   }

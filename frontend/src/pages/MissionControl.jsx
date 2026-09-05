@@ -7,6 +7,7 @@ import { razorpayApi } from '../services/api';
 import { useMode } from '../context/ModeContext';
 import { ErrorBanner, PageSkeleton, Sparkline } from '../components/UI/PageStates';
 import './MissionControl.css';
+import PipelineSignature from '../components/UI/PipelineSignature';
 
 const pad7 = values => {
   if (!values.length) return [0, 0, 0, 0, 0, 0, 0];
@@ -181,6 +182,7 @@ const MissionControl = () => {
         <span className="page-eyebrow">Dashboard</span>
         <h1 className="page-title">Mission Control</h1>
         <p className="page-subtitle">Live recovery metrics, revenue at risk, and recent engine activity.</p>
+        <div className="mc-pipeline-wrap"><PipelineSignature activeStage={incidents.length ? 5 : 0} /></div>
       </div>
 
       {error && <ErrorBanner onRetry={() => { setLoading(true); loadRemote(); }} />}

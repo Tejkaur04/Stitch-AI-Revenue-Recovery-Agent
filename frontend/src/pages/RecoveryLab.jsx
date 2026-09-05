@@ -20,6 +20,7 @@ const RecoveryLab = () => {
         revenueAtRisk: apiResults.control.at_risk_paise + apiResults.treatment.at_risk_paise,
         incrementalLift: apiResults.incremental_recovery_paise,
         policyViolations: apiResults.policy_violations,
+        unsettledCases: apiResults.unsettled_cases || 0,
         baseline: {
           recovered: apiResults.control.recovered_paise,
           rate: apiResults.control.recovery_rate,
@@ -119,7 +120,7 @@ const RecoveryLab = () => {
           <div className="experiment-explanation glass-panel animate-slide-up">
             <strong>Why this measures Stitch impact</strong>
             <p>
-              Both strategies receive the same revenue-at-risk batch. The control group follows the existing strategy;
+              Both strategies receive the same revenue-at-risk batch. Cohorts are assigned once per customer and only terminal outcomes within the attribution window are included. The control group follows the existing strategy;
               the treatment group follows Stitch. A higher treatment recovery rate is the measurable lift attributable
               to the different recovery strategy, while contacts and policy violations show the cost of that lift.
             </p>
@@ -202,6 +203,10 @@ const RecoveryLab = () => {
               <span className="inc-value text-blue">
                 -{(results.baseline.contacts - results.stitch.contacts).toLocaleString()}
               </span>
+            </div>
+            <div className="inc-content">
+              <span className="inc-label">Awaiting Attribution</span>
+              <span className="inc-value">{results.unsettledCases}</span>
             </div>
           </div>
         </>

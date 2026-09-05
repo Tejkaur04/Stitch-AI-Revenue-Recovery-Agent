@@ -6,6 +6,9 @@
   padding-bottom: 3rem;
 }
 
+.mission-control-page::before { content: ''; position: fixed; inset: 0 0 0 220px; pointer-events: none; background-image: radial-gradient(rgba(255,255,255,.025) 1px, transparent 1px); background-size: 24px 24px; mask-image: linear-gradient(to bottom, rgba(0,0,0,.7), transparent 58%); }
+.mc-pipeline-wrap { margin-top: .75rem; padding: .85rem 1rem; width: fit-content; max-width: 100%; overflow-x: auto; border: 1px solid var(--border-hairline); border-radius: var(--radius-sm); background: var(--bg-surface); }
+
 .mc-metrics-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -49,8 +52,8 @@
   align-items: center;
   gap: 0.15rem;
 }
-.mc-trend.up { color: #10B981; }
-.mc-trend.down { color: #EF4444; }
+.mc-trend.up { color: var(--color-recovered); }
+.mc-trend.down { color: var(--color-escalated); }
 
 .sparkline { margin-top: 0.15rem; opacity: 0.9; }
 
@@ -123,7 +126,7 @@
 
 .mc-feed-id {
   font-size: 0.72rem;
-  color: var(--accent-blue);
+  color: var(--color-ai);
   font-weight: 600;
 }
 
@@ -142,7 +145,7 @@
 }
 
 .mc-connection-state {
-  color: var(--status-warning);
+  color: var(--color-risk);
   font-size: 0.75rem;
 }
 

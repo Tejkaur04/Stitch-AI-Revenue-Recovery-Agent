@@ -1,4 +1,4 @@
-import { addAuditEvent, addIncident, listIncidents } from './store.js';
+import { addAuditEvent, claimEventId, listIncidents } from './store.js';
 import { createIncidentFromEvent } from './stitchEngine.js';
 
 export const startRazorpayPoller = (adapter, processIncoming, intervalMs = 300000) => {
@@ -9,11 +9,13 @@ export const startRazorpayPoller = (adapter, processIncoming, intervalMs = 30000
       const invoices = await adapter.listInvoices({ count: 100 });
       for (const invoice of invoices.items || []) {
         if (invoice.status !== 'issued' || !invoice.due_at || invoice.due_at * 1000 >= Date.now()) continue;
-        const exists = listIncidents().some(incident => incident.invoice_id === invoice.id && incident.status === 'pending');
+        const eventId = `invoice-overdue:${invoice.id}:${invoice.due_at}`;
+        const exists = listIncidents().some(incident => incident.invoice_id === invoice.id && !['recovered', 'stopped'].includes(incident.status));
         if (exists) continue;
+        if (!claimEventId(eventId)) continue;
         const incident = createIncidentFromEvent({
           sourceEvent: 'invoice.overdue',
-          razorpayEventId: `invoice-overdue:${invoice.id}:${invoice.due_at}`,
+          razorpayEventId: eventId,
           customerId: invoice.customer_id || 'unknown_customer',
           customer: { id: invoice.customer_id || 'unknown_customer', name: 'Razorpay customer' },
           invoiceId: invoice.id,

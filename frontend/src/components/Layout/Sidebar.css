@@ -8,10 +8,8 @@
   flex-direction: column;
   gap: 0;
   padding: 1.25rem 0.75rem;
-  background: rgba(5, 5, 10, 0.7);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-hairline);
   z-index: 100;
 }
 
@@ -30,14 +28,13 @@
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #A855F7 0%, #3B82F6 100%);
+  background: var(--color-ai);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 0 12px rgba(168, 85, 247, 0.4);
   color: #fff;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-display);
   font-weight: 800;
   font-size: 0.95rem;
   letter-spacing: -0.04em;
@@ -50,7 +47,7 @@
 }
 
 .sidebar-name {
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-display);
   font-size: 1rem;
   font-weight: 700;
   color: #fff;
@@ -108,9 +105,9 @@
 }
 
 .sidebar-link.active {
-  background: rgba(168, 85, 247, 0.12);
+  background: rgba(124,111,240,.12);
   color: #fff;
-  border: 1px solid rgba(168, 85, 247, 0.2);
+  border: 1px solid rgba(124,111,240,.2);
 }
 
 .sidebar-link.active::before {
@@ -121,7 +118,7 @@
   bottom: 8px;
   width: 3px;
   border-radius: 0 3px 3px 0;
-  background: linear-gradient(180deg, #A855F7, #3B82F6);
+  background: var(--color-ai);
   animation: active-bar 0.35s ease;
 }
 
@@ -135,7 +132,7 @@
   height: 18px;
   padding: 0 5px;
   border-radius: 100px;
-  background: rgba(168, 85, 247, 0.35);
+  background: rgba(249,115,22,.25);
   color: #fff;
   font-size: 0.65rem;
   font-weight: 700;
@@ -158,8 +155,8 @@
 }
 
 .sidebar-link.active .sidebar-link-icon {
-  background: rgba(168, 85, 247, 0.2);
-  color: #c084fc;
+  background: rgba(124,111,240,.2);
+  color: var(--color-ai);
 }
 
 .sidebar-link-body {
@@ -221,5 +218,7 @@
 }
 
 .status-checking { color: rgba(255,255,255,0.35); }
-.status-ok  { color: #10B981; }
-.status-err { color: #EF4444; }
+.status-ok  { color: var(--color-recovered); }
+.status-err { color: var(--color-escalated); }
+
+.sidebar-pipeline { display: grid; gap: .45rem; margin: .65rem .6rem .9rem; padding: .7rem 0 0; border-top: 1px solid var(--border-hairline); color: var(--text-muted); font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }

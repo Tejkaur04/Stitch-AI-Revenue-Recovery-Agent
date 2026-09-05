@@ -14,7 +14,8 @@ import {
   findIncidentByExternalId,
   updateIncident,
   getMerchantSettings,
-  saveMerchantSettings
+  saveMerchantSettings,
+  claimDueRecoveryJobs
 } from './store.js';
 import { createIncidentFromEvent, normalizeRazorpayEvent, processIncident, requireIncident, transition } from './stitchEngine.js';
 import { startRazorpayPoller } from './poller.js';
@@ -99,7 +100,7 @@ const handleWebhook = async (request, response, origin) => {
     return send(response, 400, { error: error.message }, origin);
   }
 
-  if (normalized.sourceEvent === 'payment.failed') {
+  if (['payment.failed', 'invoice.failed', 'subscription.failed', 'checkout.abandoned', 'order.abandoned'].includes(normalized.sourceEvent)) {
     const incident = createIncidentFromEvent(normalized);
     processIncident(incident, adapter).then(() => executeBoundedAction(incident, adapter)).catch(error => {
       addAuditEvent({ incidentId: incident.id, event: 'PROCESSING_FAILED', actor: 'SYSTEM', result: error.message });
@@ -110,8 +111,8 @@ const handleWebhook = async (request, response, origin) => {
   if (['payment.captured', 'payment.authorized', 'order.paid', 'invoice.paid', 'payment_link.paid'].includes(normalized.sourceEvent)) {
     const incident = findIncidentByExternalId(normalized);
     if (incident && !['recovered', 'stopped', 'escalated'].includes(incident.status)) {
-      updateIncident(incident.id, { status: 'recovered', state: 'recovered', payment_state: 'paid' });
-      addAuditEvent({ incidentId: incident.id, event: 'PAYMENT_RECEIVED', actor: 'RAZORPAY', result: 'Current payment state is paid' });
+      updateIncident(incident.id, { status: 'recovered', state: 'recovered', payment_state: 'paid', outcome_at: new Date().toISOString(), recovered_amount_paise: incident.amount_paise });
+      addAuditEvent({ incidentId: incident.id, event: 'PAYMENT_RECEIVED', actor: 'RAZORPAY', result: normalized.sourceEvent === 'payment_link.paid' ? 'Recovery payment link paid' : 'Current payment state is paid', metadata: { payment_link_id: normalized.paymentLinkId || null } });
     }
   }
 
@@ -203,7 +204,8 @@ const handleRequest = async (request, response) => {
     const cases = allIncidents.map(incident => ({
       group: incident.group || 'treatment',
       amount_paise: incident.amount_paise,
-      outcome: ['recovered', 'RECOVERED'].includes(incident.status || incident.state) ? 'recovered' : null,
+      outcome: incident.outcome_at && ['recovered', 'RECOVERED'].includes(incident.status || incident.state) ? 'recovered' : null,
+      settled: Boolean(incident.outcome_at),
       contacts: Number(incident.contact_count || 0),
       recovery_cost_paise: incident.action?.type === 'send_link' ? 25 : 0,
       policy_violation: ['blocked', 'escalated'].includes(incident.status || incident.state)
@@ -233,6 +235,10 @@ const handleRequest = async (request, response) => {
       eventPayload = { event: 'payment.failed', payload: { payment: { entity: { amount: 499900, error_description: 'Expired card', customer_id: 'cust_04' } }, customer: { entity: { id: 'cust_04', name: 'Maya Retail', ltv: 640000 } } } };
     } else if (scenario === 'B2B_INVOICE') {
       eventPayload = { event: 'invoice.failed', payload: { invoice: { entity: { amount: 1750000, error_description: 'Invoice overdue', customer_id: 'cust_05' } }, customer: { entity: { id: 'cust_05', name: 'Northstar Systems', ltv: 4800000 } } } };
+    } else if (scenario === 'CHECKOUT_ABANDONED') {
+      eventPayload = { event: 'checkout.abandoned', payload: { order: { entity: { id: 'order_abandoned_01', amount: 349900 } }, customer: { entity: { id: 'cust_06', name: 'Neha Kapoor', ltv: 290000 } } } };
+    } else if (scenario === 'SUBSCRIPTION_FAILED') {
+      eventPayload = { event: 'subscription.failed', payload: { subscription: { entity: { id: 'sub_01', customer_id: 'cust_07', plan: { item: { amount: 79900 } }, error_description: 'Subscription renewal payment failed' } }, customer: { entity: { id: 'cust_07', name: 'Arjun Fitness', ltv: 960000 } } } };
     }
     
     if (!eventPayload.event) return send(response, 400, { error: 'Unknown scenario' }, origin);
@@ -299,6 +305,21 @@ const handleRequest = async (request, response) => {
     return send(response, 200, incident, origin);
   }
 
+  if (request.method === 'POST' && parts[0] === 'incidents' && parts[1] && parts[2] === 'promise-to-pay') {
+    let body;
+    try { body = JSON.parse(await readBody(request)); } catch { return send(response, 400, { error: 'Invalid JSON body' }, origin); }
+    let incident;
+    try { incident = requireIncident(parts[1]); } catch (error) { return send(response, 404, { error: error.message }, origin); }
+    if (incident.action?.type !== 'promise_to_pay') return send(response, 409, { error: 'This incident has no promise-to-pay workflow.' }, origin);
+    if (!['promised', 'declined'].includes(body.status)) return send(response, 400, { error: 'status must be promised or declined' }, origin);
+    if (body.status === 'promised' && (!body.promise_due_at || Number.isNaN(Date.parse(body.promise_due_at)) || Date.parse(body.promise_due_at) <= Date.now())) return send(response, 400, { error: 'promise_due_at must be a future ISO timestamp' }, origin);
+    incident.action.promise_status = body.status;
+    incident.action.promise_due_at = body.status === 'promised' ? body.promise_due_at : null;
+    updateIncident(incident.id, { action: incident.action });
+    addAuditEvent({ incidentId: incident.id, event: body.status === 'promised' ? 'PROMISE_TO_PAY_CAPTURED' : 'PROMISE_TO_PAY_DECLINED', actor: 'MERCHANT', result: body.status === 'promised' ? `Due ${body.promise_due_at}` : 'Escalation review required' });
+    return send(response, 200, { incident: requireIncident(incident.id) }, origin);
+  }
+
   return send(response, 404, { error: 'Not found' }, origin);
 };
 
@@ -309,3 +330,10 @@ const server = createServer((request, response) => {
 });
 
 startRazorpayPoller(adapter, incident => processIncident(incident, adapter), Number(process.env.POLLER_INTERVAL_MS || 300000));
+
+// SQLite makes scheduled work survive a restart; this worker only advances audit state.
+setInterval(() => {
+  for (const job of claimDueRecoveryJobs()) {
+    addAuditEvent({ incidentId: job.incident_id, event: 'RECOVERY_JOB_DUE', actor: 'SYSTEM', result: job.type, metadata: { job_id: job.id } });
+  }
+}, Number(process.env.JOB_WORKER_INTERVAL_MS || 60000));

@@ -26,6 +26,22 @@ test('normalizes a Razorpay payment failure', () => {
   assert.equal(result.type, 'payment_failure');
 });
 
+test('normalizes overdue invoices, checkout abandonment, and failed subscriptions', () => {
+  const invoice = normalizeRazorpayEvent({ event: 'invoice.failed', payload: { invoice: { entity: { id: 'inv_1', amount: 1750000, customer_id: 'cust_1' } } } });
+  const checkout = normalizeRazorpayEvent({ event: 'checkout.abandoned', payload: { order: { entity: { id: 'order_1', amount: 349900 } } } });
+  const subscription = normalizeRazorpayEvent({ event: 'subscription.failed', payload: { subscription: { entity: { id: 'sub_1', plan: { item: { amount: 79900 } } } } } });
+
+  assert.deepEqual({ type: invoice.type, amount: invoice.amount_paise, invoice: invoice.invoiceId }, { type: 'invoice_overdue', amount: 1750000, invoice: 'inv_1' });
+  assert.deepEqual({ type: checkout.type, amount: checkout.amount_paise }, { type: 'checkout_abandonment', amount: 349900 });
+  assert.deepEqual({ type: subscription.type, amount: subscription.amount_paise, subscription: subscription.subscriptionId }, { type: 'subscription_failure', amount: 79900, subscription: 'sub_1' });
+});
+
+test('normalizes a paid payment link for incident reconciliation', () => {
+  const result = normalizeRazorpayEvent({ event: 'payment_link.paid', payload: { payment_link: { entity: { id: 'plink_1', amount: 499900, customer_id: 'cust_1' } } } });
+  assert.equal(result.paymentLinkId, 'plink_1');
+  assert.equal(result.amount_paise, 499900);
+});
+
 test('blocks retries over the configured retry limit', () => {
   const result = evaluatePolicy(baseIncident({ retry_count: 3 }));
   assert.equal(result.status, 'blocked');

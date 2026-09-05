@@ -1,18 +1,9 @@
 import React, { useState } from 'react';
 import { razorpayApi } from '../services/api';
-import { Play, AlertTriangle, CreditCard, Shield, Clock, Building2, Loader2 } from 'lucide-react';
+import { Play, AlertTriangle, CreditCard, Shield, Clock, Building2, Loader2, ShoppingCart, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import './DemoMode.css';
-
-const PIPELINE = [
-  'Detected',
-  'Understanding',
-  'Deciding',
-  'Policy Check',
-  'Verifying',
-  'Executing',
-  'Recovered / Stopped / Escalated'
-];
+import PipelineSignature from '../components/UI/PipelineSignature';
 
 const scenarios = [
   {
@@ -55,6 +46,22 @@ const scenarios = [
     desc: '₹17,500 overdue. Stitch considers late-payment history and requests a promise-to-pay instead of escalating immediately.',
     outcome: 'EXECUTING'
   },
+  {
+    key: 'CHECKOUT_ABANDONED',
+    icon: ShoppingCart,
+    iconClass: 'icon-warning',
+    title: 'Checkout Drop-off',
+    desc: 'â‚¹3,499 left at checkout. Stitch creates one compliant recovery link and stops if the customer pays.',
+    outcome: 'EXECUTING'
+  },
+  {
+    key: 'SUBSCRIPTION_FAILED',
+    icon: RefreshCw,
+    iconClass: 'icon-muted',
+    title: 'Failed Subscription Renewal',
+    desc: 'â‚¹799 renewal at risk. Stitch asks for a payment-method update instead of repeatedly retrying.',
+    outcome: 'EXECUTING'
+  },
 ];
 
 const DemoMode = () => {
@@ -83,17 +90,7 @@ const DemoMode = () => {
         <p className="page-subtitle">Select a scenario to watch Stitch resolve a revenue risk through the live recovery pipeline.</p>
       </div>
 
-      <div className="demo-pipeline glass-panel">
-        {PIPELINE.map((label, i) => (
-          <React.Fragment key={label}>
-            <div className="demo-pipe-stage">
-              <div className="demo-pipe-num">{i + 1}</div>
-              <span>{label}</span>
-            </div>
-            {i < PIPELINE.length - 1 && <div className="demo-pipe-line" />}
-          </React.Fragment>
-        ))}
-      </div>
+      <div className="demo-pipeline glass-panel"><PipelineSignature activeStage={0} /></div>
 
       <div className="scenarios-grid">
         {scenarios.map(({ key, icon: Icon, iconClass, title, desc, outcome }) => {

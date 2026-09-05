@@ -1,4 +1,4 @@
-import { addAuditEvent, addIncident, getIncident, updateIncident } from './store.js';
+import { addAuditEvent, addIncident, getIncident, getOrAssignCohort, updateIncident } from './store.js';
 import { evaluatePolicy } from './policy.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
@@ -22,20 +22,28 @@ export const normalizeRazorpayEvent = body => {
   const event = body.event || body.payload?.event;
   const payment = body.payload?.payment?.entity || {};
   const order = body.payload?.order?.entity || {};
+  const invoice = body.payload?.invoice?.entity || {};
+  const subscription = body.payload?.subscription?.entity || {};
+  const paymentLink = body.payload?.payment_link?.entity || {};
   const customer = body.payload?.customer?.entity || {};
   if (!event) throw new Error('Razorpay event is missing body.event');
 
   return {
     sourceEvent: event,
     razorpayEventId: body.id || body.event_id || null,
-    customerId: customer.id || payment.customer_id || 'unknown_customer',
-    customer: { id: customer.id || payment.customer_id || 'unknown_customer', name: customer.name || 'Razorpay customer' },
+    customerId: customer.id || payment.customer_id || invoice.customer_id || subscription.customer_id || paymentLink.customer_id || 'unknown_customer',
+    customer: { id: customer.id || payment.customer_id || invoice.customer_id || subscription.customer_id || paymentLink.customer_id || 'unknown_customer', name: customer.name || paymentLink.customer?.name || 'Razorpay customer' },
     paymentId: payment.id || null,
     orderId: order.id || payment.order_id || null,
-    invoiceId: body.payload?.invoice?.entity?.id || payment.invoice_id || null,
-    amount_paise: payment.amount || order.amount || 0,
-    reason: payment.error_description || payment.error_reason || 'Payment failed',
-    type: event.includes('invoice') ? 'invoice_overdue' : event.includes('order') ? 'cart_abandonment' : 'payment_failure'
+    invoiceId: invoice.id || payment.invoice_id || null,
+    subscriptionId: subscription.id || invoice.subscription_id || payment.subscription_id || null,
+    paymentLinkId: paymentLink.id || null,
+    amount_paise: payment.amount || order.amount || invoice.amount_due || invoice.amount || subscription.plan?.item?.amount || paymentLink.amount || 0,
+    reason: payment.error_description || payment.error_reason || invoice.error_description || invoice.error_reason || subscription.error_description || (event.includes('abandoned') ? 'Checkout abandoned' : 'Payment failed'),
+    type: event.includes('abandoned') || event.includes('checkout') ? 'checkout_abandonment'
+      : event.includes('subscription') ? 'subscription_failure'
+        : event.includes('invoice') ? 'invoice_overdue'
+          : 'payment_failure'
   };
 };
 
@@ -48,9 +56,12 @@ export const createIncidentFromEvent = normalized => {
     amount_paise: normalized.amount_paise,
     status: 'pending',
     state: 'detected',
-    group: Math.random() > 0.3 ? 'treatment' : 'control',
+    group: getOrAssignCohort(normalized.customerId),
     payment_id: normalized.paymentId,
     order_id: normalized.orderId,
+    invoice_id: normalized.invoiceId,
+    subscription_id: normalized.subscriptionId,
+    payment_link_id: normalized.paymentLinkId,
     reason: normalized.reason,
     source_event: normalized.sourceEvent,
     createdAt: new Date().toISOString(),
@@ -59,7 +70,7 @@ export const createIncidentFromEvent = normalized => {
     policy: null
   };
   addIncident(incident);
-  addAuditEvent({ incidentId: incident.id, event: 'PAYMENT_FAILED', actor: 'RAZORPAY', result: 'Detected', metadata: normalized });
+  addAuditEvent({ incidentId: incident.id, event: 'REVENUE_RISK_DETECTED', actor: 'RAZORPAY', result: normalized.type, metadata: normalized });
   return incident;
 };
 
@@ -73,6 +84,7 @@ export const transition = (incident, nextState, actor, result, metadata = {}) =>
   if (nextState === 'recovered') incident.status = 'recovered';
   if (nextState === 'stopped') incident.status = 'stopped';
   if (nextState === 'escalated') incident.status = 'escalated';
+  if (['recovered', 'stopped', 'escalated'].includes(nextState)) incident.outcome_at = new Date().toISOString();
   updateIncident(incident.id, incident);
   addAuditEvent({ incidentId: incident.id, event: 'STATE_CHANGED', actor, result, metadata: { oldState, newState: nextState, ...metadata } });
   return incident;
@@ -83,9 +95,9 @@ export const decide = async (incident) => {
   if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'fallback') {
     const expired = /expired/i.test(incident.reason);
     const riskyRetry = /insufficient funds/i.test(incident.reason);
-    const type = incident.type === 'invoice_overdue' ? 'wait' : incident.type === 'cart_abandonment' ? 'send_link' : expired ? 'send_link' : riskyRetry ? 'retry' : 'wait';
-    const reasoning = expired ? 'The payment method appears expired; request an update instead.' : riskyRetry ? 'The failure has a low recovery signal; retry requires policy review.' : 'The failure appears temporary; wait and verify current payment state before retrying.';
-    return { type, decided_by: 'ai_engine', status: 'pending', reasoning, outcome: null };
+    const type = incident.type === 'invoice_overdue' ? 'promise_to_pay' : ['cart_abandonment', 'checkout_abandonment', 'subscription_failure'].includes(incident.type) ? 'send_link' : expired ? 'send_link' : riskyRetry ? 'retry' : 'wait';
+    const reasoning = incident.type === 'invoice_overdue' ? 'The invoice is overdue; request a dated promise to pay before escalating.' : ['cart_abandonment', 'checkout_abandonment'].includes(incident.type) ? 'The checkout was abandoned; send one compliant recovery link.' : incident.type === 'subscription_failure' ? 'The subscription payment failed; send a secure payment-method update link.' : expired ? 'The payment method appears expired; request an update instead.' : riskyRetry ? 'The failure has a low recovery signal; retry requires policy review.' : 'The failure appears temporary; wait and verify current payment state before retrying.';
+    return { type, candidate_actions: ['wait', 'retry', 'send_link', 'promise_to_pay', 'escalate'], confidence: 'rule_based', decided_by: 'ai_engine', status: 'pending', reasoning, outcome: null };
   }
 
   // Real LLM Integration
@@ -101,7 +113,7 @@ export const decide = async (incident) => {
       Failure Reason: ${incident.reason}
       Incident Type: ${incident.type}
 
-      Choose ONE of these actions: "wait", "retry", "send_link", or "escalate".
+      Choose ONE of these actions: "wait", "retry", "send_link", "promise_to_pay", or "escalate".
       Return a JSON response strictly in this format:
       {
         "type": "<action_chosen>",
@@ -112,11 +124,15 @@ export const decide = async (incident) => {
     const result = await model.generateContent(prompt);
     const response = JSON.parse(result.response.text());
     
+    const allowedActions = new Set(['wait', 'retry', 'send_link', 'promise_to_pay', 'escalate']);
+    const type = allowedActions.has(response.type) ? response.type : 'wait';
     return { 
-      type: response.type, 
+      type,
+      candidate_actions: ['wait', 'retry', 'send_link', 'promise_to_pay', 'escalate'],
+      confidence: 'model_generated',
       decided_by: 'gemini_flash', 
       status: 'pending', 
-      reasoning: response.reasoning, 
+      reasoning: typeof response.reasoning === 'string' ? response.reasoning : 'Wait and re-evaluate before taking action.', 
       outcome: null 
     };
   } catch (error) {

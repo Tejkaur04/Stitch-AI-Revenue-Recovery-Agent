@@ -1,0 +1,13 @@
+.pipeline-signature { display: flex; align-items: flex-start; gap: .35rem; min-width: max-content; }
+.pipeline-stage { display: grid; justify-items: center; gap: .38rem; color: var(--text-muted); font-size: .66rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.pipeline-stage-dot { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--border-hairline); background: var(--bg-surface-alt); font-family: var(--font-mono); font-size: .65rem; }
+.pipeline-stage.is-complete { color: var(--color-recovered); }
+.pipeline-stage.is-complete .pipeline-stage-dot { border-color: var(--color-recovered); background: rgba(34,211,165,.1); }
+.pipeline-stage.is-active { color: var(--color-ai); }
+.pipeline-stage.is-active .pipeline-stage-dot { border-color: var(--color-ai); color: var(--text-primary); box-shadow: 0 0 0 3px rgba(124,111,240,.14); animation: pipeline-light 400ms ease-out; }
+.pipeline-connector { width: clamp(12px, 3vw, 38px); height: 1px; margin-top: 12px; background: var(--border-hairline); }
+.pipeline-connector.is-complete { background: var(--color-recovered); }
+.pipeline-signature--compact { align-items: center; gap: .18rem; }
+.pipeline-signature--compact .pipeline-stage-dot { width: 8px; height: 8px; font-size: 0; }
+.pipeline-signature--compact .pipeline-connector { width: 13px; margin-top: 0; }
+@keyframes pipeline-light { from { transform: scale(.8); opacity: .4; } to { transform: scale(1); opacity: 1; } }

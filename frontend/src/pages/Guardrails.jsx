@@ -83,6 +83,13 @@ const Guardrails = () => {
                     />
                   </div>
                 </div>
+                <div className="policy-setting">
+                  <div className="policy-info">
+                    <h4>Consent Required</h4>
+                    <p>Block automated recovery outreach when the customer has not given contact consent.</p>
+                  </div>
+                  <div className="policy-control"><button className="toggle-btn" type="button" onClick={() => toggle('requireConsentForOutreach')}>{settings.requireConsentForOutreach ? <ToggleRight size={34} className="text-success" /> : <ToggleLeft size={34} className="text-muted" />}</button></div>
+                </div>
               </div>
             </div>
 
@@ -92,6 +99,10 @@ const Guardrails = () => {
                 <h3>Customer Communication</h3>
               </div>
               <div className="settings-list">
+                <div className="policy-setting">
+                  <div className="policy-info"><h4>Attribution Window</h4><p>Only settled results in this window are used for experiment lift.</p></div>
+                  <div className="policy-control"><input type="number" min={1} max={60} className="policy-number-input" value={settings.attributionWindowDays} onChange={e => setNum('attributionWindowDays', e.target.value)} /></div>
+                </div>
                 <div className="policy-setting">
                   <div className="policy-info">
                     <h4>Max Outreach per Incident</h4>

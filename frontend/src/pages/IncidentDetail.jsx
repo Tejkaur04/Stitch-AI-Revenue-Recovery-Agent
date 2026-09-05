@@ -34,6 +34,9 @@ const IncidentDetail = () => {
   const [events, setEvents] = useState(() => getEvents(id));
   const [loading, setLoading] = useState(mode === 'razorpay');
   const [error, setError] = useState(null);
+  const [promiseState, setPromiseState] = useState('');
+  const [promiseDue, setPromiseDue] = useState('');
+  const [promiseSaving, setPromiseSaving] = useState(false);
 
   const load = async () => {
     try {
@@ -135,6 +138,14 @@ const IncidentDetail = () => {
   const isStopped = incident.state === INCIDENT_STATES.STOPPED;
   const isEscalated = incident.state === INCIDENT_STATES.ESCALATED;
   const isRecovered = incident.state === INCIDENT_STATES.RECOVERED;
+  const savePromise = async status => {
+    setPromiseSaving(true);
+    try {
+      const result = await razorpayApi.recordPromiseToPay(incident.id, { status, ...(status === 'promised' ? { promise_due_at: new Date(promiseDue).toISOString() } : {}) });
+      setIncident(result.incident); setPromiseState(status);
+    } catch (e) { setError(e.message || 'Could not record promise status.'); }
+    setPromiseSaving(false);
+  };
 
   return (
     <div className="incident-detail page-max">
@@ -229,6 +240,20 @@ const IncidentDetail = () => {
               )}
             </div>
           </div>
+
+          {incident.payment_link?.short_url && (
+            <div className="recovery-link glass-panel">
+              <div><span className="page-eyebrow">Live recovery action</span><strong>Provider-hosted payment link created</strong></div>
+              <a href={incident.payment_link.short_url} target="_blank" rel="noreferrer" className="btn btn-secondary">Open payment link</a>
+            </div>
+          )}
+
+          {recommended === 'promise_to_pay' && (
+            <div className="promise-panel glass-panel">
+              <div><span className="page-eyebrow">Receivables workflow</span><h3>Promise to pay</h3><p>{incident.action?.promise_status === 'promised' ? `Customer committed to pay by ${new Date(incident.action.promise_due_at).toLocaleDateString()}.` : 'Record the customer response; Stitch keeps the commitment and due-date trail.'}</p></div>
+              {!incident.action?.promise_status && <div className="promise-controls"><input type="datetime-local" value={promiseDue} onChange={e => setPromiseDue(e.target.value)} /><button className="btn btn-primary" disabled={!promiseDue || promiseSaving} onClick={() => savePromise('promised')}>Record promise</button><button className="btn btn-secondary" disabled={promiseSaving} onClick={() => savePromise('declined')}>Declined</button></div>}
+            </div>
+          )}
 
           {isStopped && (
             <div className="risk-banner glass-panel incident-outcome outcome-stopped">
