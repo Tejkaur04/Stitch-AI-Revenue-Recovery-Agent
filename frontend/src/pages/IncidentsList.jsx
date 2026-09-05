@@ -1,90 +1,156 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getIncidents, subscribe } from '../services/engine';
 import { razorpayApi } from '../services/api';
 import { useMode } from '../context/ModeContext';
-import { Search, Filter } from 'lucide-react';
+import { AlertTriangle, Search } from 'lucide-react';
+import { EmptyState, ErrorBanner, PageSkeleton } from '../components/UI/PageStates';
 import './IncidentsList.css';
 
 const IncidentsList = () => {
   const [incidents, setIncidents] = useState(() => getIncidents());
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const { mode } = useMode();
   const navigate = useNavigate();
+
+  const load = async () => {
+    try {
+      const result = await razorpayApi.getIncidents();
+      setIncidents(result.items || []);
+      setError(null);
+    } catch {
+      setError('Could not connect to backend. Start the server and refresh.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (mode === 'razorpay') {
       let active = true;
-      const load = async () => {
+      setLoading(true);
+      const tick = async () => {
         try {
           const result = await razorpayApi.getIncidents();
-          if (active) setIncidents(result.items || []);
-        } catch { if (active) setIncidents([]); }
+          if (active) {
+            setIncidents(result.items || []);
+            setError(null);
+          }
+        } catch {
+          if (active) setError('Could not connect to backend. Start the server and refresh.');
+        } finally {
+          if (active) setLoading(false);
+        }
       };
-      load();
-      const interval = setInterval(load, 5000);
+      tick();
+      const interval = setInterval(tick, 5000);
       return () => { active = false; clearInterval(interval); };
     }
+    setLoading(false);
     const unsubscribe = subscribe((newIncidents) => {
       setIncidents([...newIncidents]);
     });
     return unsubscribe;
   }, [mode]);
 
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return incidents.filter(incident => {
+      const state = String(incident.state || '').toUpperCase();
+      if (statusFilter !== 'ALL' && state !== statusFilter) return false;
+      if (!q) return true;
+      const name = String(incident.customer?.name || '').toLowerCase();
+      const reason = String(incident.reason || '').toLowerCase();
+      const id = String(incident.id || '').toLowerCase();
+      return name.includes(q) || reason.includes(q) || id.includes(q);
+    });
+  }, [incidents, query, statusFilter]);
+
   return (
-    <div className="incidents-list-page">
-      <header>
-        <h1>Incidents</h1>
-        <p className="text-secondary" style={{ marginTop: '0.5rem' }}>
-          Track all revenue at risk and monitor Stitch's live operations.
-        </p>
-      </header>
+    <div className="incidents-list-page page-max">
+      <div className="page-header">
+        <span className="page-eyebrow">Incidents</span>
+        <h1 className="page-title">Incidents</h1>
+        <p className="page-subtitle">Track revenue at risk and monitor Stitch recovery operations in real time.</p>
+      </div>
+
+      {error && <ErrorBanner onRetry={() => { setLoading(true); load(); }} />}
 
       <div className="table-controls">
         <div className="search-bar glass-panel">
           <Search size={16} className="text-muted" />
-          <input type="text" placeholder="Search by customer, ID, or amount…" />
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search by customer, ID, or reason…"
+          />
         </div>
-        <button className="btn btn-secondary">
-          <Filter size={16} /> Filter
-        </button>
+        <select
+          className="btn btn-secondary filter-select"
+          value={statusFilter}
+          onChange={e => setStatusFilter(e.target.value)}
+        >
+          <option value="ALL">All statuses</option>
+          <option value="DETECTED">Detected</option>
+          <option value="EXECUTING">In progress</option>
+          <option value="RECOVERED">Recovered</option>
+          <option value="STOPPED">Stopped</option>
+          <option value="ESCALATED">Escalated</option>
+        </select>
       </div>
 
-      <div className="incidents-table-container glass-panel">
-        <table className="incidents-table">
-          <thead>
-            <tr>
-              <th>Case ID</th>
-              <th>Customer</th>
-              <th>Amount</th>
-              <th>Reason</th>
-              <th>State</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {incidents.length === 0 ? (
+      {loading ? (
+        <PageSkeleton rows={3} />
+      ) : incidents.length === 0 ? (
+        <div className="incidents-table-container glass-panel">
+          <EmptyState
+            icon={AlertTriangle}
+            title="No incidents yet"
+            sub="Run a demo scenario to create a live recovery case."
+            ctaTo="/demo"
+            ctaLabel="Run a Demo Scenario →"
+          />
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="incidents-table-container glass-panel">
+          <EmptyState
+            icon={Search}
+            title="No matching incidents"
+            sub="Try a different search or status filter."
+          />
+        </div>
+      ) : (
+        <div className="incidents-table-container glass-panel">
+          <table className="incidents-table">
+            <thead>
               <tr>
-                <td colSpan="6" className="empty-table text-muted">
-                  No incidents yet. Go to <Link to="/demo" style={{color: 'var(--accent-blue)'}}>Demo Mode</Link> and run a scenario.
-                </td>
+                <th>Case ID</th>
+                <th>Customer</th>
+                <th>Amount</th>
+                <th>Reason</th>
+                <th>State</th>
+                <th>Action</th>
               </tr>
-            ) : (
-              incidents.map(incident => (
+            </thead>
+            <tbody>
+              {filtered.map(incident => (
                 <tr key={incident.id} onClick={() => navigate(`/incidents/${incident.id}`)}>
                   <td>
-                    <span className="incident-link">
-                      {String(incident.id || 'UNKNOWN').toUpperCase()}
-                    </span>
+                    <span className="incident-link">{String(incident.id || 'UNKNOWN').toUpperCase()}</span>
                   </td>
-                  <td style={{ fontWeight: 500 }}>{incident.customer.name}</td>
+                  <td style={{ fontWeight: 500 }}>{incident.customer?.name || '—'}</td>
                   <td>
                     <span className={`amount-cell ${incident.state === 'RECOVERED' ? 'text-success' : ''}`}>
-                      ₹{(incident.amount_paise / 100).toLocaleString('en-IN')}
+                      ₹{(Number(incident.amount_paise || 0) / 100).toLocaleString('en-IN')}
                     </span>
                   </td>
                   <td className="text-secondary">{incident.reason}</td>
                   <td>
-                    <span className={`status-badge status-${incident.state.toLowerCase()}`}>
+                    <span className={`status-badge status-${String(incident.state || '').toLowerCase()}`}>
                       {incident.state}
                     </span>
                   </td>
@@ -98,11 +164,11 @@ const IncidentsList = () => {
                     </Link>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };

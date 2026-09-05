@@ -1,26 +1,55 @@
-const incidents = new Map();
-const auditEvents = [];
-const processedEventIds = new Set();
+import Database from 'better-sqlite3';
+
+const db = new Database('./stitch.db');
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS incidents (
+    id TEXT PRIMARY KEY,
+    data TEXT
+  );
+  CREATE TABLE IF NOT EXISTS audit_events (
+    id TEXT PRIMARY KEY,
+    incidentId TEXT,
+    timestamp TEXT,
+    data TEXT
+  );
+  CREATE TABLE IF NOT EXISTS processed_events (
+    id TEXT PRIMARY KEY
+  );
+  CREATE TABLE IF NOT EXISTS merchant_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  );
+`);
 
 export const addIncident = incident => {
-  incidents.set(incident.id, incident);
+  db.prepare('INSERT INTO incidents (id, data) VALUES (?, ?)').run(incident.id, JSON.stringify(incident));
   return incident;
 };
 
-export const getIncident = id => incidents.get(id);
-export const listIncidents = () => [...incidents.values()];
+export const getIncident = id => {
+  const row = db.prepare('SELECT data FROM incidents WHERE id = ?').get(id);
+  return row ? JSON.parse(row.data) : undefined;
+};
+
+export const listIncidents = () => {
+  return db.prepare('SELECT data FROM incidents').all().map(r => JSON.parse(r.data));
+};
+
 export const findIncidentByExternalId = ({ paymentId, orderId, invoiceId }) => listIncidents().find(incident =>
   (paymentId && incident.payment_id === paymentId) ||
   (orderId && incident.order_id === orderId) ||
   (invoiceId && incident.invoice_id === invoiceId)
 );
-export const getIncidentEvents = id => auditEvents.filter(event => event.incidentId === id);
-export const getAllAuditEvents = () => [...auditEvents];
+
+export const getIncidentEvents = id => db.prepare('SELECT data FROM audit_events WHERE incidentId = ? ORDER BY timestamp ASC').all().map(r => JSON.parse(r.data));
+export const getAllAuditEvents = () => db.prepare('SELECT data FROM audit_events ORDER BY timestamp DESC').all().map(r => JSON.parse(r.data));
 
 export const updateIncident = (id, changes) => {
-  const incident = incidents.get(id);
+  const incident = getIncident(id);
   if (!incident) return null;
   Object.assign(incident, changes, { updatedAt: new Date().toISOString() });
+  db.prepare('UPDATE incidents SET data = ? WHERE id = ?').run(JSON.stringify(incident), id);
   return incident;
 };
 
@@ -30,8 +59,24 @@ export const addAuditEvent = event => {
     timestamp: new Date().toISOString(),
     ...event
   };
-  auditEvents.push(record);
+  db.prepare('INSERT INTO audit_events (id, incidentId, timestamp, data) VALUES (?, ?, ?, ?)').run(
+    record.id, record.incidentId || null, record.timestamp, JSON.stringify(record)
+  );
   return record;
+};
+
+export const getMerchantSettings = () => {
+  const rows = db.prepare('SELECT key, value FROM merchant_settings').all();
+  const defaults = { maxRetries: 3, maxContacts: 1, quietStartHour: 21, quietEndHour: 9, highValueThresholdPaise: 10000000, highValueRequiresApproval: true, quietHoursEnabled: true };
+  const saved = Object.fromEntries(rows.map(r => [r.key, JSON.parse(r.value)]));
+  return { ...defaults, ...saved };
+};
+
+export const saveMerchantSettings = (settings) => {
+  const upsert = db.prepare('INSERT INTO merchant_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
+  const run = db.transaction(obj => { for (const [k, v] of Object.entries(obj)) upsert.run(k, JSON.stringify(v)); });
+  run(settings);
+  return getMerchantSettings();
 };
 
 export const getRecoveryMetrics = (scope = [], dateRange = null) => {
@@ -70,9 +115,13 @@ export const getRecoveryMetrics = (scope = [], dateRange = null) => {
 export const summarizeRevenueSnapshot = (all = []) => getRecoveryMetrics(all);
 
 export const claimEventId = eventId => {
-  if (!eventId || processedEventIds.has(eventId)) return false;
-  processedEventIds.add(eventId);
-  return true;
+  if (!eventId) return false;
+  try {
+    db.prepare('INSERT INTO processed_events (id) VALUES (?)').run(eventId);
+    return true;
+  } catch (e) {
+    return false;
+  }
 };
 
 export const dashboardSummary = () => {

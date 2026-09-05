@@ -1,12 +1,12 @@
 import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import FloatingNav from './FloatingNav';
+import Sidebar from './Sidebar';
 import Aurora from '../UI/Aurora';
 import './AppLayout.css';
 
 const AppLayout = () => {
-  const location = useLocation();
-  const isLanding = location.pathname === '/';
+  const { pathname } = useLocation();
+  const isLanding = pathname === '/';
 
   return (
     <div className="app-root">
@@ -16,8 +16,8 @@ const AppLayout = () => {
         blend={0.65}
         speed={0.5}
       />
-      <FloatingNav />
-      <div className={`app-main ${isLanding ? 'landing-shell' : 'page-shell'}`}>
+      {!isLanding && <Sidebar />}
+      <div className={isLanding ? 'landing-shell' : 'page-shell'}>
         <Outlet />
       </div>
     </div>

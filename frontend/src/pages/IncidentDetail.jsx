@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { subscribe, getIncident, getEvents, INCIDENT_STATES } from '../services/engine';
 import { razorpayApi } from '../services/api';
 import { useMode } from '../context/ModeContext';
-import { ArrowLeft, User, AlertCircle, CheckCircle, Clock, ShieldX, BrainCircuit } from 'lucide-react';
+import { ArrowLeft, User, AlertCircle, Check, ShieldX, BrainCircuit } from 'lucide-react';
+import { ErrorBanner, PageSkeleton } from '../components/UI/PageStates';
 import './IncidentDetail.css';
 
 const STATE_ORDER = [
@@ -18,25 +19,58 @@ const STATE_ORDER = [
   INCIDENT_STATES.ESCALATED
 ];
 
+const stageTimestamp = (events, state) => {
+  const match = [...events].reverse().find(e => {
+    const ns = e.metadata?.newState || e.newState;
+    return e.event === 'STATE_CHANGED' && String(ns || '').toUpperCase() === state;
+  });
+  return match?.timestamp;
+};
+
 const IncidentDetail = () => {
   const { id } = useParams();
   const { mode } = useMode();
   const [incident, setIncident] = useState(() => getIncident(id));
   const [events, setEvents] = useState(() => getEvents(id));
+  const [loading, setLoading] = useState(mode === 'razorpay');
+  const [error, setError] = useState(null);
+
+  const load = async () => {
+    try {
+      const result = await razorpayApi.getIncident(id);
+      setIncident(result.incident);
+      setEvents(result.events || []);
+      setError(null);
+    } catch {
+      setIncident(undefined);
+      setError('Could not connect to backend. Start the server and refresh.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (mode === 'razorpay') {
       let active = true;
-      const load = async () => {
+      setLoading(true);
+      const tick = async () => {
         try {
           const result = await razorpayApi.getIncident(id);
           if (!active) return;
           setIncident(result.incident);
           setEvents(result.events || []);
-        } catch { if (active) setIncident(undefined); }
+          setError(null);
+        } catch {
+          if (active) {
+            setIncident(undefined);
+            setError('Could not connect to backend. Start the server and refresh.');
+          }
+        } finally {
+          if (active) setLoading(false);
+        }
       };
-      load();
-      const interval = setInterval(load, 2000);
+      tick();
+      const interval = setInterval(tick, 2000);
       return () => { active = false; clearInterval(interval); };
     }
     const unsubscribe = subscribe((incidents, allEvents) => {
@@ -46,139 +80,187 @@ const IncidentDetail = () => {
     return unsubscribe;
   }, [id, mode]);
 
+  const recommended = incident?.action?.type || incident?.aiDecision?.action;
+  const reasoning = incident?.action?.reasoning || incident?.aiDecision?.basis;
+  const decidedBy = incident?.action?.decided_by;
+  const gemini = decidedBy === 'gemini_flash';
+  const ruleEngine = decidedBy === 'ai_engine' || decidedBy === 'fallback_due_to_error';
+
+  const pipelineStates = useMemo(() => {
+    if (!incident) return [];
+    const isStopped = incident.state === INCIDENT_STATES.STOPPED;
+    const isEscalated = incident.state === INCIDENT_STATES.ESCALATED;
+    if (isStopped) {
+      return [
+        INCIDENT_STATES.DETECTED,
+        INCIDENT_STATES.UNDERSTANDING,
+        INCIDENT_STATES.DECIDING,
+        INCIDENT_STATES.POLICY_CHECK,
+        INCIDENT_STATES.VERIFYING,
+        INCIDENT_STATES.EXECUTING,
+        INCIDENT_STATES.STOPPED
+      ];
+    }
+    if (isEscalated) {
+      return [
+        INCIDENT_STATES.DETECTED,
+        INCIDENT_STATES.UNDERSTANDING,
+        INCIDENT_STATES.DECIDING,
+        INCIDENT_STATES.POLICY_CHECK,
+        INCIDENT_STATES.ESCALATED
+      ];
+    }
+    return STATE_ORDER.filter(s => s !== INCIDENT_STATES.STOPPED && s !== INCIDENT_STATES.ESCALATED);
+  }, [incident]);
+
+  if (loading) {
+    return (
+      <div className="incident-detail page-max">
+        <PageSkeleton rows={4} />
+      </div>
+    );
+  }
+
+  if (error && !incident) {
+    return (
+      <div className="incident-detail page-max">
+        <ErrorBanner onRetry={() => { setLoading(true); load(); }} />
+      </div>
+    );
+  }
+
   if (!incident) return <div className="loading-state">Locating Case File...</div>;
 
-  const currentIdx = STATE_ORDER.indexOf(incident.state);
-  const isTerminal = [INCIDENT_STATES.RECOVERED, INCIDENT_STATES.STOPPED, INCIDENT_STATES.ESCALATED]
-    .includes(incident.state);
+  const currentIdx = pipelineStates.indexOf(incident.state);
   const isStopped = incident.state === INCIDENT_STATES.STOPPED;
   const isEscalated = incident.state === INCIDENT_STATES.ESCALATED;
   const isRecovered = incident.state === INCIDENT_STATES.RECOVERED;
-  const terminalStateOrder = isStopped ? [
-    INCIDENT_STATES.DETECTED,
-    INCIDENT_STATES.UNDERSTANDING,
-    INCIDENT_STATES.DECIDING,
-    INCIDENT_STATES.POLICY_CHECK,
-    INCIDENT_STATES.VERIFYING,
-    INCIDENT_STATES.EXECUTING,
-    INCIDENT_STATES.STOPPED
-  ] : isEscalated ? [
-    INCIDENT_STATES.DETECTED,
-    INCIDENT_STATES.UNDERSTANDING,
-    INCIDENT_STATES.DECIDING,
-    INCIDENT_STATES.POLICY_CHECK,
-    INCIDENT_STATES.ESCALATED
-  ] : STATE_ORDER;
 
   return (
-    <div className="incident-detail">
-      <header className="incident-header">
-        <div className="header-left">
-          <Link to="/incidents" className="back-link"><ArrowLeft size={16} /> Back to Incidents</Link>
-          <h1 className="case-title">Case File {incident.id.toUpperCase()}</h1>
-        </div>
-        <div className={`status-badge status-${incident.state.toLowerCase()}`}>
-          {incident.state}
-        </div>
-      </header>
-
-      <div className="risk-banner glass-panel">
-        <div className="risk-amount">
-          <span className="label">Revenue at Risk</span>
-          <span className={`value ${incident.state === INCIDENT_STATES.RECOVERED ? 'text-success' : 'text-danger'}`}>
-            ₹{(incident.amount_paise / 100).toLocaleString('en-IN')}
-          </span>
-        </div>
-        <div className="customer-info">
-          <User size={18} className="text-secondary" />
-          <span className="cust-name">{incident.customer.name}</span>
-          <span className="cust-ltv">LTV: ₹{(incident.customer.ltv / 100).toLocaleString('en-IN')}</span>
-        </div>
-        <div className="problem-info">
-          <AlertCircle size={18} className="text-warning" />
-          <span>{incident.reason}</span>
-        </div>
-      </div>
-
-      <div className="pipeline-container">
-        <h2 className="section-title">Live Recovery Pipeline</h2>
-        <div className="pipeline">
-          {terminalStateOrder.map((state, idx) => {
-            const linearComplete = currentIdx >= idx && !isStopped && !isEscalated;
-            const isCompleted = isRecovered ? idx <= STATE_ORDER.indexOf(INCIDENT_STATES.RECOVERED) : linearComplete;
+    <div className="incident-detail page-max">
+      <div className="incident-layout">
+        <aside className="pipeline-rail">
+          <div className="page-eyebrow" style={{ marginBottom: '1rem' }}>Pipeline</div>
+          {pipelineStates.map((state, idx) => {
             const isCurrent = incident.state === state;
-            const isStoppedNode = isStopped && state === INCIDENT_STATES.STOPPED;
-            const isEscalatedNode = isEscalated && state === INCIDENT_STATES.ESCALATED;
-            const isFailedEnd = (isStoppedNode || isEscalatedNode) && state === incident.state;
-
+            const isCompleted = isCurrent
+              ? false
+              : isRecovered
+                ? idx < pipelineStates.indexOf(INCIDENT_STATES.RECOVERED)
+                : currentIdx > idx;
+            const isFailedEnd = (isStopped || isEscalated) && state === incident.state;
+            const ts = stageTimestamp(events, state);
             return (
-              <div key={state} className={`pipeline-node ${isCompleted || isFailedEnd ? 'completed' : ''} ${isCurrent ? 'current' : ''}`}>
-                <div className="node-icon">
-                  {isFailedEnd ? <ShieldX size={16} /> :
-                   isCurrent ? <Clock size={16} className={!isTerminal ? 'pulse-icon' : ''} /> :
-                   isCompleted ? <CheckCircle size={16} /> :
-                   <div className="empty-circle"></div>}
+              <div
+                key={state}
+                className={`tl-node ${isCompleted || isFailedEnd ? 'done' : ''} ${isCurrent ? 'current' : ''} ${isFailedEnd ? 'failed' : ''}`}
+              >
+                <div className="tl-marker">
+                  {isCompleted || (isFailedEnd && isStopped) ? <Check size={12} /> : null}
                 </div>
-                <div className="node-label">{state}</div>
+                <div className="tl-copy">
+                  <strong>{state.replaceAll('_', ' ')}</strong>
+                  <span>{ts ? new Date(ts).toLocaleTimeString() : isCurrent ? 'In progress' : isCompleted ? '' : 'Pending'}</span>
+                </div>
               </div>
             );
           })}
-        </div>
-      </div>
+        </aside>
 
-      <div className="investigation-grid">
-        <div className="grid-col glass-panel">
-          <h3 className="panel-title"><BrainCircuit size={18} className="text-accent-purple" /> AI Decision</h3>
-          {incident.aiDecision ? (
-            <div className="decision-content animate-slide-up">
-              <div className="decision-action">Recommended: <strong>{incident.aiDecision.action}</strong></div>
-              <div className="decision-basis">
-                <span className="label">Decision Basis:</span>
-                <p>{incident.aiDecision.basis}</p>
+        <div className="incident-main">
+          <header className="incident-header">
+            <div className="header-left">
+              <Link to="/incidents" className="back-link"><ArrowLeft size={16} /> Back to Incidents</Link>
+              <div className="page-header" style={{ marginBottom: 0 }}>
+                <span className="page-eyebrow">Incident</span>
+                <h1 className="page-title">Case {String(incident.id).toUpperCase()}</h1>
               </div>
             </div>
-          ) : (
-            <div className="waiting-state text-muted">Awaiting analysis...</div>
-          )}
-        </div>
-
-        <div className="grid-col glass-panel">
-          <h3 className="panel-title"><ShieldX size={18} className="text-warning" /> Policy Guardrail</h3>
-          {incident.policyResult ? (
-            <div className={`policy-result animate-slide-up ${incident.policyResult.status === 'blocked' ? 'text-danger' : 'text-success'}`}>
-              <strong>{incident.policyResult.status.toUpperCase()}</strong>
-              {incident.policyResult.reason && <p>{incident.policyResult.reason}</p>}
+            <div className={`status-badge status-${String(incident.state).toLowerCase()}`}>
+              {incident.state}
             </div>
-          ) : (
-            <div className="waiting-state text-muted">Awaiting policy check...</div>
-          )}
-        </div>
-      </div>
+          </header>
 
-      {isStopped && (
-        <div className="risk-banner glass-panel incident-outcome outcome-stopped">
-          <strong>Payment already received.</strong>
-          <span>Unnecessary retry prevented.</span>
-        </div>
-      )}
-      {isEscalated && (
-        <div className="risk-banner glass-panel incident-outcome outcome-escalated">
-          <strong>BLOCKED BY POLICY</strong>
-          <span>Recovery was escalated to a human.</span>
-        </div>
-      )}
-
-      <div className="audit-log glass-panel">
-        <h3 className="panel-title">Audit Trail</h3>
-        <div className="log-entries">
-          {events.map(event => (
-            <div key={event.id} className="log-entry">
-              <div className="log-time">{new Date(event.timestamp).toLocaleTimeString()}</div>
-              <div className={`log-actor actor-${event.actor.toLowerCase()}`}>{event.actor}</div>
-              <div className="log-event">{event.event}</div>
-              <div className="log-result">{event.result}</div>
+          <div className="risk-banner glass-panel">
+            <div className="risk-amount">
+              <span className="label">Revenue at Risk</span>
+              <span className={`value ${isRecovered ? 'text-success' : 'text-danger'}`}>
+                ₹{(Number(incident.amount_paise || 0) / 100).toLocaleString('en-IN')}
+              </span>
             </div>
-          ))}
+            <div className="customer-info">
+              <User size={18} className="text-secondary" />
+              <span className="cust-name">{incident.customer?.name || 'Unknown customer'}</span>
+              <span className="cust-ltv">LTV: ₹{(Number(incident.customer?.ltv || 0) / 100).toLocaleString('en-IN')}</span>
+            </div>
+            <div className="problem-info">
+              <AlertCircle size={18} className="text-warning" />
+              <span>{incident.reason}</span>
+            </div>
+          </div>
+
+          <div className="investigation-grid">
+            <div className="grid-col glass-panel">
+              <h3 className="panel-title"><BrainCircuit size={18} className="text-magenta" /> AI Decision</h3>
+              {recommended ? (
+                <div className="decision-content animate-slide-up">
+                  <div className="decision-action">Recommended: <strong>{recommended}</strong></div>
+                  {gemini && <span className="decided-badge gemini">Gemini AI</span>}
+                  {ruleEngine && <span className="decided-badge rule">Rule Engine</span>}
+                  <div className="decision-basis">
+                    <span className="label">Decision Basis:</span>
+                    <p>{reasoning || 'No reasoning recorded.'}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="waiting-state text-muted">Awaiting analysis...</div>
+              )}
+            </div>
+
+            <div className="grid-col glass-panel">
+              <h3 className="panel-title"><ShieldX size={18} className="text-warning" /> Policy Guardrail</h3>
+              {incident.policyResult ? (
+                <div className={`policy-result animate-slide-up ${incident.policyResult.status === 'blocked' ? 'text-danger' : 'text-success'}`}>
+                  <strong>{String(incident.policyResult.status || '').toUpperCase()}</strong>
+                  {incident.policyResult.reason && <p>{incident.policyResult.reason}</p>}
+                </div>
+              ) : (
+                <div className="waiting-state text-muted">Awaiting policy check...</div>
+              )}
+            </div>
+          </div>
+
+          {isStopped && (
+            <div className="risk-banner glass-panel incident-outcome outcome-stopped">
+              <strong>Payment already received.</strong>
+              <span>Unnecessary retry prevented.</span>
+            </div>
+          )}
+          {isEscalated && (
+            <div className="risk-banner glass-panel incident-outcome outcome-escalated">
+              <strong>BLOCKED BY POLICY</strong>
+              <span>Recovery was escalated to a human.</span>
+            </div>
+          )}
+
+          <div className="audit-log glass-panel">
+            <h3 className="panel-title">Audit Trail</h3>
+            <div className="log-entries">
+              {events.length === 0 && (
+                <div className="empty-state" style={{ padding: '2rem' }}>
+                  <div className="empty-state-title">No audit events yet</div>
+                </div>
+              )}
+              {events.map(event => (
+                <div key={event.id} className="log-entry">
+                  <div className="log-time">{event.timestamp ? new Date(event.timestamp).toLocaleTimeString() : '—'}</div>
+                  <div className={`actor-badge actor-${String(event.actor || 'SYSTEM').toLowerCase()}`}>{event.actor}</div>
+                  <div className="log-event">{event.event}</div>
+                  <div className="log-result">{event.result}</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>

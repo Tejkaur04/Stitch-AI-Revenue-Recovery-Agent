@@ -2,9 +2,7 @@
 .recovery-lab {
   display: flex;
   flex-direction: column;
-  gap: 2.5rem;
-  max-width: 1000px;
-  margin: 0 auto;
+  gap: 1.75rem;
   position: relative;
 }
 
@@ -20,11 +18,6 @@
   filter: blur(80px);
   z-index: -1;
   pointer-events: none;
-}
-
-.lab-header h1 {
-  font-size: 2.75rem;
-  margin-bottom: 0.5rem;
 }
 
 .experiment-controls {
@@ -128,6 +121,25 @@
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.1em;
+}
+
+.winner-badge.baseline {
+  background: #F59E0B;
+  color: #1a1204;
+}
+
+.winner-badge.tie {
+  background: #64748B;
+  color: #fff;
+}
+
+.lab-chart {
+  padding: 1.25rem 1.5rem 0.75rem;
+}
+
+.lab-chart h3 {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 .strategy-card h3 {

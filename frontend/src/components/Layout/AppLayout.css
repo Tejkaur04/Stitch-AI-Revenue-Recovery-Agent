@@ -3,28 +3,15 @@
   position: relative;
 }
 
-.app-root > .aurora-container {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-}
-
-.app-main {
-  width: min(1200px, calc(100% - 32px));
-  margin: 0 auto;
-  min-height: 100vh;
+.landing-shell {
+  position: relative;
+  z-index: 1;
 }
 
 .page-shell {
-  padding: 100px 2rem 4rem;
+  margin-left: 220px;
+  min-height: 100vh;
+  padding: 2.5rem 2rem 4rem;
+  position: relative;
+  z-index: 1;
 }
-
-.landing-shell {
-  width: 100%;
-  max-width: none;
-  min-height: 0;
-  padding: 0;
-}
-
-/* Landing page handles its own layout */

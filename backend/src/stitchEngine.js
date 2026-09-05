@@ -1,5 +1,8 @@
 import { addAuditEvent, addIncident, getIncident, updateIncident } from './store.js';
 import { evaluatePolicy } from './policy.js';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'fallback');
 
 const validTransitions = {
   detected: ['understanding'],
@@ -45,7 +48,7 @@ export const createIncidentFromEvent = normalized => {
     amount_paise: normalized.amount_paise,
     status: 'pending',
     state: 'detected',
-    group: 'treatment',
+    group: Math.random() > 0.3 ? 'treatment' : 'control',
     payment_id: normalized.paymentId,
     order_id: normalized.orderId,
     reason: normalized.reason,
@@ -75,29 +78,56 @@ export const transition = (incident, nextState, actor, result, metadata = {}) =>
   return incident;
 };
 
-export const decide = incident => {
-  const expired = /expired/i.test(incident.reason);
-  const riskyRetry = /insufficient funds/i.test(incident.reason);
-  const type = incident.type === 'invoice_overdue'
-    ? 'wait'
-    : incident.type === 'cart_abandonment'
-      ? 'send_link'
-      : expired ? 'send_link' : riskyRetry ? 'retry' : 'wait';
-  const reasoning = expired
-    ? 'The payment method appears expired; request an update instead of repeating a doomed retry.'
-    : incident.type === 'invoice_overdue'
-      ? 'The customer usually pays late; wait before escalating and re-evaluate the invoice.'
-      : incident.type === 'cart_abandonment'
-        ? 'Checkout intent is recent; send a continuation link tied to the original order.'
-    : riskyRetry
-      ? 'The failure has a low recovery signal; retry requires policy review before execution.'
-      : 'The failure appears temporary; wait and verify current payment state before retrying.';
-  return { type, decided_by: 'ai_engine', status: 'pending', reasoning, outcome: null };
+export const decide = async (incident) => {
+  // If no API key is set, fallback to the hardcoded simulation so the app doesn't break
+  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'fallback') {
+    const expired = /expired/i.test(incident.reason);
+    const riskyRetry = /insufficient funds/i.test(incident.reason);
+    const type = incident.type === 'invoice_overdue' ? 'wait' : incident.type === 'cart_abandonment' ? 'send_link' : expired ? 'send_link' : riskyRetry ? 'retry' : 'wait';
+    const reasoning = expired ? 'The payment method appears expired; request an update instead.' : riskyRetry ? 'The failure has a low recovery signal; retry requires policy review.' : 'The failure appears temporary; wait and verify current payment state before retrying.';
+    return { type, decided_by: 'ai_engine', status: 'pending', reasoning, outcome: null };
+  }
+
+  // Real LLM Integration
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", generationConfig: { responseMimeType: "application/json" } });
+    
+    const prompt = `
+      You are an AI Revenue Recovery Orchestrator. A payment has failed.
+      Analyze the incident and choose the best next action.
+      
+      Customer Info: ${JSON.stringify(incident.customer)}
+      Amount: ${incident.amount_paise} paise
+      Failure Reason: ${incident.reason}
+      Incident Type: ${incident.type}
+
+      Choose ONE of these actions: "wait", "retry", "send_link", or "escalate".
+      Return a JSON response strictly in this format:
+      {
+        "type": "<action_chosen>",
+        "reasoning": "<1 sentence explaining why based on the customer context and failure reason>"
+      }
+    `;
+
+    const result = await model.generateContent(prompt);
+    const response = JSON.parse(result.response.text());
+    
+    return { 
+      type: response.type, 
+      decided_by: 'gemini_flash', 
+      status: 'pending', 
+      reasoning: response.reasoning, 
+      outcome: null 
+    };
+  } catch (error) {
+    console.error("LLM Error:", error);
+    return { type: 'wait', decided_by: 'fallback_due_to_error', status: 'pending', reasoning: 'Fell back to wait due to API error.', outcome: null };
+  }
 };
 
 export const processIncident = async (incident, adapter) => {
   transition(incident, 'understanding', 'SYSTEM', 'Customer context loaded');
-  incident.action = decide(incident);
+  incident.action = await decide(incident);
   transition(incident, 'deciding', 'AI', 'Decision generated', { action: incident.action });
 
   incident.retry_count ??= 0;

@@ -1,13 +1,51 @@
 .demo-mode {
   display: flex;
   flex-direction: column;
-  gap: 2.5rem;
-  max-width: 1000px;
-  margin: 0 auto;
+  gap: 1.75rem;
 }
 
-.demo-header h1 {
-  font-size: 2.75rem;
+.demo-pipeline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.25rem;
+  padding: 1.1rem 1.25rem;
+  overflow-x: auto;
+}
+
+.demo-pipe-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 72px;
+  text-align: center;
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.demo-pipe-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  background: rgba(168, 85, 247, 0.12);
+  color: #c084fc;
+  display: grid;
+  place-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.demo-pipe-line {
+  flex: 1;
+  height: 1px;
+  min-width: 12px;
+  margin-top: 14px;
+  background: linear-gradient(90deg, rgba(168,85,247,0.5), rgba(59,130,246,0.5));
+  opacity: 0.6;
 }
 
 .scenarios-grid {
@@ -21,17 +59,23 @@
   flex-direction: column;
   gap: 1rem;
   padding: 1.75rem;
+  position: relative;
   transition: all 0.25s ease;
 }
 
-.scenario-card:hover:not(.disabled) {
+.scenario-card .status-badge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+}
+
+.scenario-card:hover:not(.locked) {
   transform: translateY(-3px);
   border-color: var(--border-highlight);
 }
 
-.scenario-card.disabled {
-  opacity: 0.45;
-  pointer-events: none;
+.scenario-card.locked {
+  opacity: 0.55;
 }
 
 .scenario-icon {
@@ -53,6 +97,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  padding-right: 4.5rem;
 }
 
 .scenario-body h3 {
@@ -66,9 +111,26 @@
   line-height: 1.6;
 }
 
+.scenario-error {
+  font-size: 0.8rem;
+  color: #EF4444;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+}
+
 .scenario-btn {
   align-self: flex-start;
-  margin-top: 0.5rem;
+  margin-top: 0.25rem;
   padding: 0.6rem 1.25rem;
   font-size: 0.875rem;
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }

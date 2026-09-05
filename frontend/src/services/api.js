@@ -34,6 +34,9 @@ export const razorpayApi = {
   }),
   getSummary: () => request('/dashboard/summary'),
   getEvents: () => request('/events'),
+  getMerchantSettings: () => request('/merchant/settings'),
+  saveMerchantSettings: settings => request('/merchant/settings', { method: 'POST', body: JSON.stringify(settings) }),
+  getLabResults: () => request('/recovery/impact'),
   calculateImpact: cases => request('/recovery/impact', {
     method: 'POST',
     body: JSON.stringify({ cases })
@@ -48,6 +51,10 @@ export const razorpayApi = {
     return { ...result, incident: normalizeRemoteIncident(result.incident) };
   },
   getTrace: id => request(`/incidents/${encodeURIComponent(id)}/trace`),
+  triggerScenario: scenario => request('/demo/trigger-scenario', {
+    method: 'POST',
+    body: JSON.stringify({ scenario })
+  }),
   simulateManualPayment: incidentId => request('/demo/simulate-manual-payment', {
     method: 'POST',
     body: JSON.stringify({ incident_id: incidentId })

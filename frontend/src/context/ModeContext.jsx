@@ -7,7 +7,7 @@ export const useMode = () => useContext(ModeContext);
 export const ModeProvider = ({ children }) => {
   const [mode, setMode] = useState(() => {
     const savedMode = window.localStorage.getItem('stitch-mode');
-    return savedMode === 'razorpay' ? 'razorpay' : 'simulation';
+    return savedMode === 'simulation' ? 'simulation' : 'razorpay';
   });
 
   const changeMode = nextMode => {

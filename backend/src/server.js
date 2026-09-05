@@ -12,7 +12,9 @@ import {
   getIncident,
   getAllAuditEvents,
   findIncidentByExternalId,
-  updateIncident
+  updateIncident,
+  getMerchantSettings,
+  saveMerchantSettings
 } from './store.js';
 import { createIncidentFromEvent, normalizeRazorpayEvent, processIncident, requireIncident, transition } from './stitchEngine.js';
 import { startRazorpayPoller } from './poller.js';
@@ -149,6 +151,15 @@ const handleRequest = async (request, response) => {
 
   if (request.method === 'POST' && url.pathname === '/webhooks/razorpay') return handleWebhook(request, response, origin);
   if (request.method === 'GET' && url.pathname === '/health') return send(response, 200, { ok: true, mode: 'razorpay_test' }, origin);
+
+  if (request.method === 'GET' && url.pathname === '/merchant/settings') {
+    return send(response, 200, getMerchantSettings(), origin);
+  }
+  if (request.method === 'POST' && url.pathname === '/merchant/settings') {
+    let body;
+    try { body = JSON.parse(await readBody(request)); } catch { return send(response, 400, { error: 'Invalid JSON body' }, origin); }
+    return send(response, 200, saveMerchantSettings(body), origin);
+  }
   if (request.method === 'GET' && url.pathname === '/razorpay/status') return send(response, 200, {
     configured: Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET),
     webhookConfigured: Boolean(process.env.RAZORPAY_WEBHOOK_SECRET),
@@ -186,12 +197,69 @@ const handleRequest = async (request, response) => {
     if (!Array.isArray(body.cases) || body.cases.length === 0) return send(response, 400, { error: 'cases must be a non-empty array' }, origin);
     return send(response, 200, calculateImpact(body.cases), origin);
   }
+
+  if (request.method === 'GET' && url.pathname === '/recovery/impact') {
+    const allIncidents = listIncidents();
+    const cases = allIncidents.map(incident => ({
+      group: incident.group || 'treatment',
+      amount_paise: incident.amount_paise,
+      outcome: ['recovered', 'RECOVERED'].includes(incident.status || incident.state) ? 'recovered' : null,
+      contacts: Number(incident.contact_count || 0),
+      recovery_cost_paise: incident.action?.type === 'send_link' ? 25 : 0,
+      policy_violation: ['blocked', 'escalated'].includes(incident.status || incident.state)
+    }));
+    return send(response, 200, calculateImpact(cases), origin);
+  }
   if (request.method === 'POST' && url.pathname === '/demo/run-batch') {
     try {
       return send(response, 200, await runRecoveryBatch(), origin);
     } catch (error) {
       return send(response, 500, { error: error.message }, origin);
     }
+  }
+
+  if (request.method === 'POST' && url.pathname === '/demo/trigger-scenario') {
+    let body;
+    try { body = JSON.parse(await readBody(request)); } catch { return send(response, 400, { error: 'Invalid JSON body' }, origin); }
+    const scenario = body.scenario;
+    let eventPayload = {};
+    if (scenario === 'TEMP_FAILURE') {
+      eventPayload = { event: 'payment.failed', payload: { payment: { entity: { amount: 299900, error_description: 'Temporary bank failure', customer_id: 'cust_01' } }, customer: { entity: { id: 'cust_01', name: 'Rohit Sharma', ltv: 3500000 } } } };
+    } else if (scenario === 'CUSTOMER_PAID') {
+      eventPayload = { event: 'payment.failed', payload: { payment: { entity: { amount: 875000, error_description: 'Authentication failure', customer_id: 'cust_02' } }, customer: { entity: { id: 'cust_02', name: 'Acme Corp', ltv: 15000000 } } } };
+    } else if (scenario === 'POLICY_BLOCKED') {
+      eventPayload = { event: 'payment.failed', payload: { payment: { entity: { amount: 1200000, error_description: 'Insufficient funds', customer_id: 'cust_03' } }, customer: { entity: { id: 'cust_03', name: 'Startup Inc', ltv: 50000 } } } };
+    } else if (scenario === 'EXPIRED_CARD') {
+      eventPayload = { event: 'payment.failed', payload: { payment: { entity: { amount: 499900, error_description: 'Expired card', customer_id: 'cust_04' } }, customer: { entity: { id: 'cust_04', name: 'Maya Retail', ltv: 640000 } } } };
+    } else if (scenario === 'B2B_INVOICE') {
+      eventPayload = { event: 'invoice.failed', payload: { invoice: { entity: { amount: 1750000, error_description: 'Invoice overdue', customer_id: 'cust_05' } }, customer: { entity: { id: 'cust_05', name: 'Northstar Systems', ltv: 4800000 } } } };
+    }
+    
+    if (!eventPayload.event) return send(response, 400, { error: 'Unknown scenario' }, origin);
+
+    const normalized = normalizeRazorpayEvent(eventPayload);
+    const incident = createIncidentFromEvent(normalized);
+    
+    processIncident(incident, adapter).then(() => executeBoundedAction(incident, adapter));
+    
+    if (scenario === 'CUSTOMER_PAID') {
+      setTimeout(() => {
+        try {
+          const inc = requireIncident(incident.id);
+          if (['recovered', 'stopped', 'escalated'].includes(inc.status)) return;
+          addAuditEvent({ incidentId: inc.id, event: 'MANUAL_PAYMENT_RECEIVED', actor: 'RAZORPAY', result: 'Success' });
+          updateIncident(inc.id, { payment_state: 'paid' });
+          if (inc.state === 'executing') transition(inc, 'verifying', 'SYSTEM', 'Payment state rechecked');
+          if (inc.state === 'verifying') {
+            inc.action = { ...(inc.action || {}), status: 'killed', kill_reason: 'customer_paid_manually' };
+            updateIncident(inc.id, { action: inc.action });
+            addAuditEvent({ incidentId: inc.id, event: 'SCHEDULED_RETRY_CANCELLED', actor: 'SYSTEM', result: 'Unnecessary retry prevented' });
+            transition(inc, 'stopped', 'SYSTEM', 'Payment already received');
+          }
+        } catch(e) {}
+      }, 5000);
+    }
+    return send(response, 201, { incident_id: incident.id }, origin);
   }
 
   if (request.method === 'GET' && url.pathname === '/incidents') {
